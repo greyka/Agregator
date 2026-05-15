@@ -1,41 +1,36 @@
-# Weather provider
+# Weather
 
-Endpoint `/api/weather?lat=...&lon=...` returns a normalized JSON shape. Internally the backend picks one of two providers:
+The dashboard fetches weather via the backend endpoint `GET /api/weather?lat=...&lon=...`.
 
-| Provider | When used | Cost | CORS | Quota |
-|---|---|---|---|---|
-| **Yandex.Pogoda** | `YANDEX_WEATHER_KEY` is set | Free "Weather on your site" tier | Server-only (we proxy) | 50 requests/day |
-| **Open-Meteo** | Default fallback | Free, no key | Open | Unlimited (fair use) |
+Provider: **[Open-Meteo](https://open-meteo.com/)** — free, no API key required, CORS-enabled, fair-use rate limits, ECMWF / GFS models with hourly resolution worldwide.
 
-Both responses are cached in-process for 10 minutes per coordinate, so a single household easily fits into the 50 req/day Yandex quota.
+The backend proxies requests so:
+- Responses are cached in-process for 10 minutes per coordinate.
+- Multiple browser tabs / refreshes share a single upstream hit.
+- A future swap of providers is a one-file change in `backend/app/routers/weather.py`.
 
-## Getting a Yandex Weather key
+## Location
 
-1. Open https://yandex.ru/dev/weather/ — Кабинет разработчика
-2. Sign in with a Yandex account, create a new "Weather on your site" key (free tier, 50 req/day)
-3. Copy the key
+The user picks a country + city through the UI ("Выберите локацию" button on the weather card, or click the city name in the header). The picked location is stored in browser `localStorage`.
 
-## Wiring the key
+City autocomplete uses the **Open-Meteo Geocoding API** (`geocoding-api.open-meteo.com/v1/search`) — same family, free, supports Russian language.
 
-Edit `docker-compose.yml` (or set in your deployment env) and add to the `backend` service:
+## Normalised response shape
 
-```yaml
-  backend:
-    environment:
-      ...
-      YANDEX_WEATHER_KEY: "your-key-here"
+```json
+{
+  "provider": "open-meteo",
+  "temp": 9, "feels": 6, "humidity": 77,
+  "wind": 12, "wind_dir_deg": 297, "wind_dir": "NW",
+  "condition": "light-rain",
+  "uv_index": 0.0,
+  "sunrise": "05:44", "sunset": "21:28",
+  "hourly": [
+    { "label": "NOW", "temp": 9, "condition": "light-rain", "now": true },
+    { "label": "23:00", "temp": 9, "condition": "partly-cloudy" },
+    ...
+  ]
+}
 ```
 
-Restart the backend container:
-
-```bash
-docker compose up -d backend
-```
-
-Open the dashboard. The WeatherHero card title now shows `· YANDEX` next to the city name. If the key is invalid or rate-limited, the backend transparently falls back to Open-Meteo and the badge shows `OPEN-METEO (YANDEX FAILED)`.
-
-## Why proxy instead of direct browser calls?
-
-- Yandex's API does not send CORS headers, so the browser cannot call it directly.
-- Even if it did, the API key would be exposed in client code.
-- Routing through the backend lets us cache + transparently fall back.
+`condition` strings are provider-neutral (`clear`, `partly-cloudy`, `cloudy`, `overcast`, `drizzle`, `light-rain`, `rain`, `heavy-rain`, `showers`, `light-snow`, `snow`, `heavy-snow`, `snow-showers`, `thunderstorm`, `thunderstorm-with-hail`, `fog`, `hail`, `wind`) so the frontend maps them to icons once.
