@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, SavedLocation } from "./useLocation";
 
 export type WeatherHour = { label: string; temp: number; condition: string; now?: boolean };
 
@@ -17,47 +18,15 @@ export type Weather = {
   condition: string;
   uvIndex: number | null;
   hourly: WeatherHour[];
+  needsLocation: boolean;
 };
 
 const DEFAULT: Weather = {
   loading: true, error: null, provider: "", city: "—",
   temp: 0, feels: 0, humidity: 0, wind: 0, windDir: "—",
   sunrise: "—", sunset: "—", condition: "clear", uvIndex: null, hourly: [],
+  needsLocation: false,
 };
-
-async function getLocation(): Promise<{ lat: number; lon: number; city: string }> {
-  // Browser geolocation (HTTPS or localhost only — otherwise this rejects fast)
-  if (navigator.geolocation && (location.protocol === "https:" || location.hostname === "localhost")) {
-    try {
-      const coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (p) => resolve(p.coords),
-          (e) => reject(e),
-          { timeout: 4000, maximumAge: 3_600_000 }
-        );
-      });
-      const city = await reverseGeocode(coords.latitude, coords.longitude);
-      return { lat: coords.latitude, lon: coords.longitude, city };
-    } catch { /* fall through */ }
-  }
-  // IP-based fallback via ipinfo.io
-  const r = await fetch("https://ipinfo.io/json");
-  if (!r.ok) throw new Error(`ipinfo ${r.status}`);
-  const d = await r.json();
-  const [lat, lon] = String(d.loc || "0,0").split(",").map(Number);
-  return { lat, lon, city: d.city || d.region || "Local" };
-}
-
-async function reverseGeocode(lat: number, lon: number): Promise<string> {
-  try {
-    const r = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&language=en&count=1`
-    );
-    if (!r.ok) return "Local";
-    const d = await r.json();
-    return d.results?.[0]?.name || "Local";
-  } catch { return "Local"; }
-}
 
 async function fetchWeather(lat: number, lon: number) {
   const r = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
@@ -66,18 +35,22 @@ async function fetchWeather(lat: number, lon: number) {
 }
 
 export function useWeather(): Weather {
+  const [loc] = useLocation();
   const [data, setData] = useState<Weather>(DEFAULT);
 
   useEffect(() => {
+    if (!loc) {
+      setData({ ...DEFAULT, loading: false, needsLocation: true });
+      return;
+    }
     let cancelled = false;
-    const load = async () => {
+    const load = async (l: SavedLocation) => {
       try {
-        const { lat, lon, city } = await getLocation();
-        const wx = await fetchWeather(lat, lon);
+        const wx = await fetchWeather(l.lat, l.lon);
         if (!cancelled) {
           setData({
-            loading: false, error: null,
-            provider: wx.provider, city,
+            loading: false, error: null, needsLocation: false,
+            provider: wx.provider, city: l.city,
             temp: wx.temp, feels: wx.feels,
             humidity: wx.humidity, wind: wx.wind, windDir: wx.wind_dir,
             sunrise: wx.sunrise, sunset: wx.sunset,
@@ -88,28 +61,41 @@ export function useWeather(): Weather {
           });
         }
       } catch (e: any) {
-        if (!cancelled) setData({ ...DEFAULT, loading: false, error: e?.message || "weather failed" });
+        if (!cancelled) {
+          setData({ ...DEFAULT, loading: false, error: e?.message || "weather failed" });
+        }
       }
     };
-    load();
-    const id = setInterval(load, 600_000);
+    load(loc);
+    const id = setInterval(() => load(loc), 600_000);
     return () => { cancelled = true; clearInterval(id); };
-  }, []);
+  }, [loc?.lat, loc?.lon]);
 
   return data;
 }
 
-// Map provider-neutral condition string → label + icon name (key from Icons).
-export function conditionToInfo(condition: string): { label: string; icon: "Sun" | "Cloud" | "Moon" | "Wind" } {
+export function conditionToInfo(condition: string): { label: string } {
   const c = (condition || "").toLowerCase();
-  if (c === "clear") return { label: "Clear sky", icon: "Sun" };
-  if (c.startsWith("partly")) return { label: "Partly cloudy", icon: "Sun" };
-  if (c === "cloudy") return { label: "Cloudy", icon: "Cloud" };
-  if (c === "overcast") return { label: "Overcast", icon: "Cloud" };
-  if (c.includes("snow")) return { label: "Snow", icon: "Cloud" };
-  if (c.includes("rain")) return { label: "Rain", icon: "Cloud" };
-  if (c.includes("shower")) return { label: "Showers", icon: "Cloud" };
-  if (c.includes("thunder")) return { label: "Thunderstorm", icon: "Wind" };
-  if (c.includes("fog")) return { label: "Foggy", icon: "Cloud" };
-  return { label: condition || "—", icon: "Cloud" };
+  const labels: Record<string, string> = {
+    "clear": "Ясно",
+    "partly-cloudy": "Малооблачно",
+    "cloudy": "Облачно",
+    "overcast": "Пасмурно",
+    "drizzle": "Морось",
+    "light-rain": "Лёгкий дождь",
+    "rain": "Дождь",
+    "heavy-rain": "Сильный дождь",
+    "showers": "Ливни",
+    "light-snow": "Лёгкий снег",
+    "snow": "Снег",
+    "heavy-snow": "Сильный снег",
+    "snow-showers": "Снегопад",
+    "thunderstorm": "Гроза",
+    "thunderstorm-with-hail": "Гроза с градом",
+    "wet-snow": "Мокрый снег",
+    "fog": "Туман",
+    "hail": "Град",
+    "wind": "Ветрено",
+  };
+  return { label: labels[c] || condition || "—" };
 }

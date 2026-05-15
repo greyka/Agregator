@@ -1,0 +1,85 @@
+// Minimal country list (~70 most-used) — name in RU + ISO2 code.
+// Emoji flag is derived from ISO2 at render time (no asset bundle needed).
+// Expand the list as needed; Open-Meteo Geocoding accepts any ISO2.
+
+export type Country = { code: string; name: string };
+
+export const COUNTRIES: Country[] = [
+  { code: "RU", name: "Россия" },
+  { code: "BY", name: "Беларусь" },
+  { code: "UA", name: "Украина" },
+  { code: "KZ", name: "Казахстан" },
+  { code: "AM", name: "Армения" },
+  { code: "AZ", name: "Азербайджан" },
+  { code: "GE", name: "Грузия" },
+  { code: "KG", name: "Кыргызстан" },
+  { code: "MD", name: "Молдова" },
+  { code: "TJ", name: "Таджикистан" },
+  { code: "TM", name: "Туркменистан" },
+  { code: "UZ", name: "Узбекистан" },
+  { code: "LV", name: "Латвия" },
+  { code: "LT", name: "Литва" },
+  { code: "EE", name: "Эстония" },
+  { code: "US", name: "США" },
+  { code: "GB", name: "Великобритания" },
+  { code: "DE", name: "Германия" },
+  { code: "FR", name: "Франция" },
+  { code: "IT", name: "Италия" },
+  { code: "ES", name: "Испания" },
+  { code: "PT", name: "Португалия" },
+  { code: "NL", name: "Нидерланды" },
+  { code: "BE", name: "Бельгия" },
+  { code: "CH", name: "Швейцария" },
+  { code: "AT", name: "Австрия" },
+  { code: "PL", name: "Польша" },
+  { code: "CZ", name: "Чехия" },
+  { code: "SK", name: "Словакия" },
+  { code: "HU", name: "Венгрия" },
+  { code: "RO", name: "Румыния" },
+  { code: "BG", name: "Болгария" },
+  { code: "GR", name: "Греция" },
+  { code: "RS", name: "Сербия" },
+  { code: "HR", name: "Хорватия" },
+  { code: "SI", name: "Словения" },
+  { code: "FI", name: "Финляндия" },
+  { code: "SE", name: "Швеция" },
+  { code: "NO", name: "Норвегия" },
+  { code: "DK", name: "Дания" },
+  { code: "IS", name: "Исландия" },
+  { code: "IE", name: "Ирландия" },
+  { code: "TR", name: "Турция" },
+  { code: "IL", name: "Израиль" },
+  { code: "AE", name: "ОАЭ" },
+  { code: "SA", name: "Саудовская Аравия" },
+  { code: "EG", name: "Египет" },
+  { code: "MA", name: "Марокко" },
+  { code: "ZA", name: "ЮАР" },
+  { code: "IN", name: "Индия" },
+  { code: "CN", name: "Китай" },
+  { code: "JP", name: "Япония" },
+  { code: "KR", name: "Южная Корея" },
+  { code: "VN", name: "Вьетнам" },
+  { code: "TH", name: "Таиланд" },
+  { code: "ID", name: "Индонезия" },
+  { code: "MY", name: "Малайзия" },
+  { code: "SG", name: "Сингапур" },
+  { code: "PH", name: "Филиппины" },
+  { code: "AU", name: "Австралия" },
+  { code: "NZ", name: "Новая Зеландия" },
+  { code: "CA", name: "Канада" },
+  { code: "MX", name: "Мексика" },
+  { code: "BR", name: "Бразилия" },
+  { code: "AR", name: "Аргентина" },
+  { code: "CL", name: "Чили" },
+  { code: "PE", name: "Перу" },
+  { code: "CO", name: "Колумбия" },
+  { code: "CU", name: "Куба" },
+].sort((a, b) => a.name.localeCompare(b.name, "ru"));
+
+// ISO2 → flag emoji via regional indicator symbols.
+export function flag(code: string): string {
+  if (!code || code.length !== 2) return "";
+  return code.toUpperCase().split("").map(
+    (c) => String.fromCodePoint(0x1F1A5 + c.charCodeAt(0))
+  ).join("");
+}

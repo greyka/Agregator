@@ -3,90 +3,101 @@ import { Icons } from "./icons";
 import { useTicker, smoothLine, genSeries } from "./utils";
 import { ROOMS, FEED, ALERTS, CAMERAS as CAMS_MOCK, UIDevice } from "./mock";
 import { useWeather, conditionToInfo } from "./useWeather";
+import { useLocation } from "./useLocation";
+import { LocationPicker } from "./LocationPicker";
+import { WeatherIcon } from "./WeatherIcon";
+import { flag } from "./countries";
+
+function isNightAt(sunrise: string, sunset: string): boolean {
+  if (!sunrise || !sunset || sunrise === "—" || sunset === "—") return false;
+  const now = new Date();
+  const [srH, srM] = sunrise.split(":").map(Number);
+  const [ssH, ssM] = sunset.split(":").map(Number);
+  const cur = now.getHours() * 60 + now.getMinutes();
+  const sr = srH * 60 + srM;
+  const ss = ssH * 60 + ssM;
+  return cur < sr || cur >= ss;
+}
 
 export function WeatherHero() {
   const w = useWeather();
+  const [loc, setLoc] = useLocation();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const info = conditionToInfo(w.condition);
-  return (
-    <div className="card glow-border" style={{padding: 22}}>
-      <div className="card-h" style={{marginBottom: 10}}>
-        <div className="card-title">
-          Local · {w.loading ? "Locating…" : w.city}
-          {w.provider && !w.loading && (
-            <span style={{marginLeft: 8, fontSize: 9, color: "var(--text-3)", letterSpacing: "0.12em"}}>
-              · {w.provider.toUpperCase()}
-            </span>
-          )}
-        </div>
-        <div className="card-tools">
-          {w.error ? <span className="chip" style={{color:"var(--danger)"}}>OFFLINE</span>
-                   : <span className="chip live">LIVE</span>}
-        </div>
-      </div>
-      <div className="weather-hero">
-        <div className="weather-left">
-          <div>
-            <div className="weather-temp">
-              {w.loading ? "—" : w.temp}<span className="deg">°</span>
-            </div>
-            <div className="weather-meta" style={{marginTop: 8}}>
-              {info.label} · feels like <b>{w.feels}°</b>
-              {w.uvIndex !== null && <> · UV <b>{Math.round(w.uvIndex)}</b></>}
-            </div>
-            <div style={{display:"flex", gap:8, marginTop: 12, flexWrap:"wrap"}}>
-              <span className="tag"><Icons.Wind /> {w.wind} km/h {w.windDir}</span>
-              <span className="tag"><Icons.Droplet /> {w.humidity}%</span>
-              <span className="tag"><Icons.Sun /> Sunset {w.sunset}</span>
-            </div>
+  const night = isNightAt(w.sunrise, w.sunset);
+
+  if (w.needsLocation) {
+    return (
+      <>
+        <div className="card glow-border" style={{padding: 22, minHeight: 220, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap: 12}}>
+          <div style={{fontSize: 18, fontWeight: 600}}>Выберите локацию</div>
+          <div style={{fontSize: 12, color: "var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.08em"}}>
+            ПОГОДА И ВРЕМЯ — ПО ГОРОДУ
           </div>
-          <div className="forecast" style={{marginTop: 20}}>
-            {w.hourly.map((f, i) => {
-              const Ic = Icons[conditionToInfo(f.condition).icon];
-              return (
+          <button className="btn primary" onClick={() => setPickerOpen(true)} style={{marginTop: 10}}>
+            <Icons.Plus /> Указать страну и город
+          </button>
+        </div>
+        <LocationPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSave={setLoc} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="card glow-border" style={{padding: 22}}>
+        <div className="card-h" style={{marginBottom: 10}}>
+          <div className="card-title" style={{cursor: "pointer"}} onClick={() => setPickerOpen(true)} title="Сменить локацию">
+            {loc && <span style={{fontSize: 14, marginRight: 6}}>{flag(loc.country)}</span>}
+            {w.loading ? "Locating…" : w.city}
+            {w.provider && !w.loading && (
+              <span style={{marginLeft: 8, fontSize: 9, color: "var(--text-3)", letterSpacing: "0.12em"}}>
+                · {w.provider.toUpperCase()}
+              </span>
+            )}
+            <span style={{marginLeft: 8, fontSize: 11, color: "var(--text-3)", textTransform:"none", letterSpacing: 0}}>✎</span>
+          </div>
+          <div className="card-tools">
+            {w.error ? <span className="chip" style={{color:"var(--danger)"}}>OFFLINE</span>
+                     : <span className="chip live">LIVE</span>}
+          </div>
+        </div>
+        <div className="weather-hero">
+          <div className="weather-left">
+            <div>
+              <div className="weather-temp">
+                {w.loading ? "—" : w.temp}<span className="deg">°</span>
+              </div>
+              <div className="weather-meta" style={{marginTop: 8}}>
+                {info.label} · ощущается <b>{w.feels}°</b>
+                {w.uvIndex !== null && <> · УФ <b>{Math.round(w.uvIndex)}</b></>}
+              </div>
+              <div style={{display:"flex", gap:8, marginTop: 12, flexWrap:"wrap"}}>
+                <span className="tag"><Icons.Wind /> {w.wind} км/ч {w.windDir}</span>
+                <span className="tag"><Icons.Droplet /> {w.humidity}%</span>
+                <span className="tag"><Icons.Sun /> Закат {w.sunset}</span>
+              </div>
+            </div>
+            <div className="forecast" style={{marginTop: 20}}>
+              {w.hourly.map((f, i) => (
                 <div key={i} className={`cell ${f.now ? "now" : ""}`}>
-                  <Ic style={{width:16, height:16, color: f.now ? "var(--accent)" : "var(--text-2)"} as any} />
+                  <WeatherIcon condition={f.condition} isNight={night} size={28} />
                   <div className="t">{f.temp}°</div>
                   <div className="d">{f.label}</div>
                 </div>
-              );
-            })}
-            {w.hourly.length === 0 && Array.from({length: 5}).map((_, i) => (
-              <div key={i} className="cell"><div className="t">—</div><div className="d">…</div></div>
-            ))}
+              ))}
+              {w.hourly.length === 0 && Array.from({length: 5}).map((_, i) => (
+                <div key={i} className="cell"><div className="t">—</div><div className="d">…</div></div>
+              ))}
+            </div>
+          </div>
+          <div style={{position:"relative", display:"flex", alignItems:"center", justifyContent:"center"}}>
+            <WeatherIcon condition={w.condition} isNight={night} size={180} style={{filter: "drop-shadow(0 8px 28px rgba(255,180,90,0.25))"}} />
           </div>
         </div>
-        <div style={{position:"relative", display:"flex", alignItems:"center", justifyContent:"center"}}>
-          <WeatherGlyph />
-        </div>
       </div>
-    </div>
-  );
-}
-
-function WeatherGlyph() {
-  return (
-    <svg viewBox="0 0 220 200" style={{width:"100%", height:"100%", maxHeight: 220}}>
-      <defs>
-        <radialGradient id="sunG" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#FFD27A" />
-          <stop offset="60%" stopColor="rgba(255,180,90,0.45)" />
-          <stop offset="100%" stopColor="rgba(255,180,90,0)" />
-        </radialGradient>
-        <linearGradient id="cloudG" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="rgba(255,255,255,0.16)"/>
-          <stop offset="100%" stopColor="rgba(255,255,255,0.04)"/>
-        </linearGradient>
-      </defs>
-      <circle cx="130" cy="86" r="80" fill="url(#sunG)">
-        <animate attributeName="r" values="78;86;78" dur="6s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="130" cy="86" r="32" fill="rgba(255,209,140,0.95)" />
-      <g opacity="0.9">
-        <ellipse cx="78" cy="120" rx="58" ry="22" fill="url(#cloudG)" />
-        <ellipse cx="148" cy="138" rx="70" ry="24" fill="url(#cloudG)" />
-        <ellipse cx="60" cy="148" rx="44" ry="16" fill="url(#cloudG)" />
-      </g>
-    </svg>
+      <LocationPicker open={pickerOpen} initial={loc} onClose={() => setPickerOpen(false)} onSave={setLoc} />
+    </>
   );
 }
 
