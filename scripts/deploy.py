@@ -106,25 +106,23 @@ def main() -> int:
     print("\n[2/5] Checking system & Docker...")
     run(client, "uname -a && cat /etc/os-release | head -3 && docker --version && docker compose version")
 
-    # Detect whether docker requires sudo for this user.
+    print("\n[3/5] Preparing remote dir...")
+    # Detect docker permissions first so we know whether to sudo subsequent commands.
+    # (Backend container writes .pyc as root in mounted volumes; only sudo can clear them.)
     rc, _, _ = run(client, "docker ps >/dev/null 2>&1", check=False, stream=False)
     needs_sudo = rc != 0
+    sudo_prefix = "sudo -S -p '' " if needs_sudo else ""
     if needs_sudo:
-        print("  (user not in docker group — will use sudo for docker commands)")
-        # sudo -S reads password from stdin
-        sudo_prefix = "sudo -S -p '' "
-    else:
-        sudo_prefix = ""
+        print("  (user not in docker group — will use sudo for docker + cleanup)")
 
-    print("\n[3/5] Preparing remote dir...")
     # Wipe project source files so files removed locally are gone remote too.
     # Keeps the directory itself, the deploy tarball, and docker volumes intact.
     run(client, (
         f"mkdir -p {args.path} && "
-        f"find {args.path} -mindepth 1 -maxdepth 1 "
+        f"{sudo_prefix}find {args.path} -mindepth 1 -maxdepth 1 "
         f"! -name '_deploy.tar.gz' ! -name '.env' "
         f"-exec rm -rf {{}} +"
-    ))
+    ), sudo_password=password if needs_sudo else None)
 
     print("\n[4/5] Packing project and uploading...")
     tarball = make_tarball(project_root)

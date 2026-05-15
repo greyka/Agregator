@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import init_db
 from .integration_manager import manager
-from .routers import devices, integrations, scenes, ws
+from .routers import devices, integrations, scenes, weather, ws
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 
@@ -60,6 +60,7 @@ app.add_middleware(
 app.include_router(devices.router)
 app.include_router(integrations.router)
 app.include_router(scenes.router)
+app.include_router(weather.router)
 app.include_router(ws.router)
 
 

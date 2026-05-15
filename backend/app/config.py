@@ -14,5 +14,9 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["*"]
 
+    # Weather provider — if set, uses Yandex Weather API; otherwise falls back to Open-Meteo.
+    # Get a free "Weather on your site" key (50 req/day): https://yandex.ru/dev/weather/
+    yandex_weather_key: str | None = None
+
 
 settings = Settings()

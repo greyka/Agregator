@@ -2,15 +2,22 @@ import { useMemo, useState } from "react";
 import { Icons } from "./icons";
 import { useTicker, smoothLine, genSeries } from "./utils";
 import { ROOMS, FEED, ALERTS, CAMERAS as CAMS_MOCK, UIDevice } from "./mock";
-import { useWeather, codeToInfo } from "./useWeather";
+import { useWeather, conditionToInfo } from "./useWeather";
 
 export function WeatherHero() {
   const w = useWeather();
-  const info = codeToInfo(w.code);
+  const info = conditionToInfo(w.condition);
   return (
     <div className="card glow-border" style={{padding: 22}}>
       <div className="card-h" style={{marginBottom: 10}}>
-        <div className="card-title">Local · {w.loading ? "Locating…" : w.city}</div>
+        <div className="card-title">
+          Local · {w.loading ? "Locating…" : w.city}
+          {w.provider && !w.loading && (
+            <span style={{marginLeft: 8, fontSize: 9, color: "var(--text-3)", letterSpacing: "0.12em"}}>
+              · {w.provider.toUpperCase()}
+            </span>
+          )}
+        </div>
         <div className="card-tools">
           {w.error ? <span className="chip" style={{color:"var(--danger)"}}>OFFLINE</span>
                    : <span className="chip live">LIVE</span>}
@@ -34,12 +41,12 @@ export function WeatherHero() {
           </div>
           <div className="forecast" style={{marginTop: 20}}>
             {w.hourly.map((f, i) => {
-              const Ic = Icons[codeToInfo(f.code).icon];
+              const Ic = Icons[conditionToInfo(f.condition).icon];
               return (
                 <div key={i} className={`cell ${f.now ? "now" : ""}`}>
                   <Ic style={{width:16, height:16, color: f.now ? "var(--accent)" : "var(--text-2)"} as any} />
-                  <div className="t">{f.t}°</div>
-                  <div className="d">{f.d}</div>
+                  <div className="t">{f.temp}°</div>
+                  <div className="d">{f.label}</div>
                 </div>
               );
             })}
