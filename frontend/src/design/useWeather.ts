@@ -54,11 +54,13 @@ async function getLocation(): Promise<{ lat: number; lon: number; city: string }
       return { lat: coords.latitude, lon: coords.longitude, city };
     } catch { /* fall through */ }
   }
-  // IP-based fallback
-  const r = await fetch("https://ipapi.co/json/");
-  if (!r.ok) throw new Error(`ipapi ${r.status}`);
+  // IP-based fallback — ipinfo.io is CORS-friendly and has no captcha for casual use.
+  // Returns { city, region, country, loc: "lat,lon" }
+  const r = await fetch("https://ipinfo.io/json");
+  if (!r.ok) throw new Error(`ipinfo ${r.status}`);
   const d = await r.json();
-  return { lat: d.latitude, lon: d.longitude, city: d.city || d.region || "Local" };
+  const [lat, lon] = String(d.loc || "0,0").split(",").map(Number);
+  return { lat, lon, city: d.city || d.region || "Local" };
 }
 
 async function reverseGeocode(lat: number, lon: number): Promise<string> {
