@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local data
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+backend-data/
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+
+# Deploy helpers — keep template only
+scripts/*.local.*
+
+# Build artifacts
+*.egg-info/
+*.tar.gz
