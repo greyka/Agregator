@@ -65,6 +65,12 @@ const TYPE_ICON: Record<string, string> = {
   light: "Lightbulb",
   switch: "Outlet",
   sensor: "Thermometer",
+  climate: "Thermometer",
+  cover: "Window",
+  lock: "Lock",
+  fan: "Fan",
+  media_player: "Tv",
+  vacuum: "Power",
   hub: "Wifi",
   unknown: "Power",
 };
