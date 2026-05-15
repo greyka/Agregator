@@ -7,7 +7,7 @@ export type Route =
 
 const NAV_ITEMS: { id: Route; label: string; icon: keyof typeof Icons; badge?: string; dot?: boolean }[] = [
   { id: "dashboard", label: "Dashboard", icon: "Dashboard" },
-  { id: "rooms", label: "Rooms", icon: "Rooms", badge: "6" },
+  { id: "rooms", label: "Rooms", icon: "Rooms" },
   { id: "devices", label: "Devices", icon: "Devices" },
   { id: "integrations", label: "Integrations", icon: "Integrations" },
   { id: "automations", label: "Automations", icon: "Automations", dot: true },
@@ -20,13 +20,14 @@ const NAV_ITEMS: { id: Route; label: string; icon: keyof typeof Icons; badge?: s
 ];
 
 export function Sidebar({
-  active, onNav, deviceCount, integrationsOnline, integrationsActive,
+  active, onNav, deviceCount, integrationsOnline, integrationsActive, roomCount,
 }: {
   active: Route;
   onNav: (r: Route) => void;
   deviceCount: number;
   integrationsOnline: number;
   integrationsActive: number;
+  roomCount: number;
 }) {
   return (
     <aside className="sidebar">
@@ -44,6 +45,7 @@ export function Sidebar({
           {NAV_ITEMS.map((n) => {
             const Ic = Icons[n.icon];
             const badge = n.id === "devices" ? String(deviceCount) :
+                          n.id === "rooms" && roomCount > 0 ? String(roomCount) :
                           n.id === "integrations" ? `${integrationsOnline}/${integrationsActive}` :
                           n.badge;
             return (

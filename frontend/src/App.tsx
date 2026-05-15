@@ -8,6 +8,7 @@ import {
 } from "./design/widgets";
 import { DeviceModal, NotificationCenter, CommandPalette } from "./design/overlays";
 import { IntegrationsScreen } from "./design/integrations";
+import { RoomsScreen } from "./design/rooms";
 import { backendToUI, SCENES_MOCK, UIDevice } from "./design/mock";
 import { useStore } from "./store";
 import { api, Device } from "./api";
@@ -19,7 +20,7 @@ export function App() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const [scenes, setScenes] = useState(SCENES_MOCK);
 
-  const { devices: backendDevices, status, integrations, refresh, connectWs } = useStore();
+  const { devices: backendDevices, status, integrations, rooms, refresh, connectWs } = useStore();
 
   useEffect(() => {
     refresh().catch(console.error);
@@ -40,8 +41,8 @@ export function App() {
   }, []);
 
   const uiDevices: UIDevice[] = useMemo(
-    () => backendDevices.map(backendToUI),
-    [backendDevices]
+    () => backendDevices.map((d) => backendToUI(d, rooms)),
+    [backendDevices, rooms]
   );
 
   const findBackend = (id: string): Device | undefined =>
@@ -80,6 +81,7 @@ export function App() {
           deviceCount={uiDevices.length}
           integrationsActive={integrationsActive}
           integrationsOnline={integrationsOnline}
+          roomCount={rooms.length}
         />
         <main className="main">
           <Topbar
@@ -103,7 +105,8 @@ export function App() {
               <AllDevices devices={uiDevices} onOpen={setOpenDevice} onToggle={toggleDevice} />
             )}
             {route === "integrations" && <IntegrationsScreen />}
-            {route !== "dashboard" && route !== "devices" && route !== "integrations" && (
+            {route === "rooms" && <RoomsScreen />}
+            {route !== "dashboard" && route !== "devices" && route !== "integrations" && route !== "rooms" && (
               <Placeholder route={route} />
             )}
           </div>

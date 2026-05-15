@@ -4,6 +4,9 @@ import { smoothLine, genSeries, useTicker } from "./utils";
 import { UIDevice } from "./mock";
 import { ALERTS } from "./mock";
 import type { Route } from "./shell";
+import { api } from "../api";
+import { useStore } from "../store";
+import { RoomIcon } from "./RoomIcon";
 
 export function DeviceModal({ device, onClose, onToggle, onBrightness }: {
   device: UIDevice | null;
@@ -85,6 +88,8 @@ function DeviceModalInner({ device, onClose, onToggle, onBrightness }: {
           </div>
         )}
 
+        <DeviceRoomAssign deviceId={Number(device.id)} />
+
         <div style={{paddingTop: 8}}>
           <div style={{fontSize:11, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.1em", marginBottom: 8}}>ACTIVITY · LAST 24H</div>
           <svg width="100%" height="80" viewBox="0 0 480 80" preserveAspectRatio="none">
@@ -99,6 +104,50 @@ function DeviceModalInner({ device, onClose, onToggle, onBrightness }: {
           </svg>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DeviceRoomAssign({ deviceId }: { deviceId: number }) {
+  const { rooms, devices, refresh } = useStore();
+  const dev = devices.find((d) => d.id === deviceId);
+  const [busy, setBusy] = useState(false);
+  if (!dev) return null;
+  const onChange = async (v: string) => {
+    setBusy(true);
+    try {
+      const room_id = v === "" ? 0 : Number(v); // 0 means "unassign" on the backend
+      await api.patchDevice(deviceId, { room_id });
+      await refresh();
+    } finally { setBusy(false); }
+  };
+  const current = rooms.find((r) => r.id === dev.room_id);
+  return (
+    <div style={{padding: "14px 0 4px", display:"flex", alignItems:"center", gap: 12}}>
+      <div style={{fontSize:11, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.1em"}}>КОМНАТА</div>
+      {current && (
+        <div style={{
+          width: 26, height: 26, borderRadius: 8,
+          background: `${current.color}22`, border: `1px solid ${current.color}55`,
+          color: current.color, display: "grid", placeItems: "center",
+        }}>
+          <RoomIcon name={current.icon} size={14} />
+        </div>
+      )}
+      <select
+        className="lp-input"
+        value={dev.room_id ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={busy}
+        style={{
+          flex: 1, background: "rgba(0,0,0,0.4)", border: "1px solid var(--hairline)",
+          color: "var(--text-1)", borderRadius: 10, padding: "8px 11px",
+          fontSize: 13, fontFamily: "inherit", outline: "none",
+        }}
+      >
+        <option value="">— не привязано —</option>
+        {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+      </select>
     </div>
   );
 }

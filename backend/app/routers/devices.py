@@ -51,6 +51,8 @@ async def update_device(
         device.friendly_name = patch.friendly_name
     if patch.room is not None:
         device.room = patch.room
+    if patch.room_id is not None:
+        device.room_id = patch.room_id if patch.room_id != 0 else None
     await session.commit()
     await session.refresh(device)
     return device

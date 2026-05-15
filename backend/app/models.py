@@ -2,10 +2,32 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Integer, String, UniqueConstraint, func
+from sqlalchemy import ForeignKey, JSON, Boolean, DateTime, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
+
+
+class Floor(Base):
+    __tablename__ = "floors"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    level: Mapped[int] = mapped_column(Integer, default=0)  # 0 = ground, 1 = first, -1 = basement
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Room(Base):
+    __tablename__ = "rooms"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String)
+    icon: Mapped[str] = mapped_column(String, default="home")  # Tabler icon key
+    color: Mapped[str] = mapped_column(String, default="#22E5FF")
+    floor_id: Mapped[int | None] = mapped_column(ForeignKey("floors.id", ondelete="SET NULL"), nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
 class Device(Base):
@@ -19,7 +41,8 @@ class Device(Base):
     type: Mapped[str] = mapped_column(String, default="unknown")
     vendor: Mapped[str | None] = mapped_column(String, nullable=True)
     model: Mapped[str | None] = mapped_column(String, nullable=True)
-    room: Mapped[str | None] = mapped_column(String, nullable=True)
+    room: Mapped[str | None] = mapped_column(String, nullable=True)  # legacy free-text label
+    room_id: Mapped[int | None] = mapped_column(ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True, index=True)
     state: Mapped[dict] = mapped_column(JSON, default=dict)
     last_seen: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

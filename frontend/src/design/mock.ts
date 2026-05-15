@@ -69,7 +69,7 @@ const TYPE_ICON: Record<string, string> = {
   unknown: "Power",
 };
 
-export function backendToUI(d: any): UIDevice {
+export function backendToUI(d: any, rooms: { id: number; name: string }[] = []): UIDevice {
   const on = (d.state?.state || "").toString().toUpperCase() === "ON";
   const value = typeof d.state?.brightness === "number"
     ? Math.round((d.state.brightness / 254) * 100)
@@ -82,10 +82,11 @@ export function backendToUI(d: any): UIDevice {
   } else if (value !== undefined) {
     stateLabel = `${value}%`;
   }
+  const roomById = d.room_id != null ? rooms.find((r) => r.id === d.room_id)?.name : null;
   return {
     id: String(d.id),
     name: d.friendly_name,
-    room: d.room || (d.vendor || "Unassigned"),
+    room: roomById || d.room || (d.vendor || "Unassigned"),
     type: d.type,
     icon: TYPE_ICON[d.type] || "Power",
     on,
