@@ -51,7 +51,10 @@ class Candidate:
 
 
 def _detect_subnet() -> str:
-    """Best-effort: return /24 string of our primary outbound interface."""
+    """Best-effort: return /24 of our primary outbound interface.
+    If we're inside Docker bridge (172.16-31.x) the real LAN is unreachable —
+    we expose this via _is_docker_bridge() so callers can supply a subnet hint.
+    """
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("1.1.1.1", 80))
@@ -59,8 +62,28 @@ def _detect_subnet() -> str:
         s.close()
     except Exception:
         my_ip = "192.168.1.1"
-    net = ipaddress.ip_network(f"{my_ip}/24", strict=False)
-    return str(net)
+    return str(ipaddress.ip_network(f"{my_ip}/24", strict=False))
+
+
+def _is_docker_subnet(subnet: str) -> bool:
+    """True if this subnet looks like a Docker-internal range (we're not seeing the LAN)."""
+    try:
+        net = ipaddress.ip_network(subnet, strict=False)
+        a, b = (int(o) for o in str(net.network_address).split(".")[:2])
+        return (a == 172 and 16 <= b <= 31) or (a == 10) or (a == 169 and b == 254)
+    except Exception:
+        return False
+
+
+# Common home LAN candidates, ordered by popularity. We scan these as fallback
+# if our own interface is on a Docker bridge — outgoing TCP from bridge to LAN
+# passes through NAT, so the sweep itself works fine from inside the container.
+COMMON_HOME_SUBNETS = [
+    "192.168.1.0/24",
+    "192.168.0.0/24",
+    "192.168.31.0/24",  # Xiaomi router default
+    "192.168.88.0/24",  # MikroTik default
+]
 
 
 async def _tcp_open(ip: str, port: int, sem: asyncio.Semaphore) -> bool:
@@ -236,16 +259,31 @@ async def _ssdp_yeelight(found: dict[str, Candidate]) -> None:
 
 @router.get("/discover")
 @router.post("/discover")
-async def discover() -> dict[str, Any]:
-    subnet = _detect_subnet()
-    log.info("discovery starting on subnet %s", subnet)
+async def discover(subnet: str | None = None) -> dict[str, Any]:
+    detected = _detect_subnet()
+    if subnet:
+        subnets = [subnet]
+    elif _is_docker_subnet(detected):
+        # We're on a Docker bridge — our own interface tells us nothing about the
+        # real LAN. Sweep the most common home ranges instead; outgoing TCP from
+        # bridge to LAN passes through NAT so this works without host networking.
+        subnets = COMMON_HOME_SUBNETS
+        log.info("on Docker subnet %s; falling back to common LAN ranges %s",
+                 detected, subnets)
+    else:
+        subnets = [detected]
 
-    sweep_task = asyncio.create_task(_sweep(subnet))
+    log.info("discovery sweeping %d subnet(s): %s", len(subnets), subnets)
+
+    sweep_results: dict[str, list[int]] = {}
+    for sn in subnets:
+        partial = await _sweep(sn)
+        sweep_results.update(partial)
+
     found_by_ip: dict[str, Candidate] = {}
-    # SSDP runs in parallel; usually a no-op behind Docker bridge but harmless.
-    ssdp_task = asyncio.create_task(_ssdp_yeelight(found_by_ip))
-
-    sweep_results, _ = await asyncio.gather(sweep_task, ssdp_task)
+    # SSDP runs after sweep; usually a no-op behind Docker bridge but harmless.
+    await _ssdp_yeelight(found_by_ip)
+    subnet_summary = ", ".join(subnets)
 
     candidates: dict[str, Candidate] = {**found_by_ip}
     if sweep_results:
@@ -271,4 +309,4 @@ async def discover() -> dict[str, Any]:
     ))
     log.info("discovery complete: %d hosts, %d actionable",
              len(out), sum(1 for c in out if c.integration_kind))
-    return {"subnet": subnet, "count": len(out), "candidates": [asdict(c) for c in out]}
+    return {"subnet": subnet_summary, "count": len(out), "candidates": [asdict(c) for c in out]}
