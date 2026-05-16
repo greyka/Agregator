@@ -102,6 +102,21 @@ export const api = {
     req<Floor>(`/api/floors/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteFloor: (id: number) => req<void>(`/api/floors/${id}`, { method: "DELETE" }),
 
+  discover: () => req<{
+    subnet: string;
+    count: number;
+    candidates: Array<{
+      ip: string;
+      open_ports: number[];
+      vendor: string | null;
+      model: string | null;
+      integration_kind: string | null;
+      hint: string | null;
+      mac: string | null;
+      extra: any | null;
+    }>;
+  }>("/api/discover", { method: "POST" }),
+
   rooms: () => req<Room[]>("/api/rooms"),
   createRoom: (body: { name: string; icon?: string; color?: string; floor_id?: number | null; position?: number }) =>
     req<Room>("/api/rooms", { method: "POST", body: JSON.stringify(body) }),
