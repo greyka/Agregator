@@ -10,11 +10,10 @@ const NAV_ITEMS: { id: Route; label: string; icon: keyof typeof Icons; badge?: s
   { id: "rooms", label: "Rooms", icon: "Rooms" },
   { id: "devices", label: "Devices", icon: "Devices" },
   { id: "integrations", label: "Integrations", icon: "Integrations" },
-  { id: "automations", label: "Automations", icon: "Automations", dot: true },
   { id: "scenes", label: "Scenes", icon: "Scenes" },
+  { id: "automations", label: "Automations", icon: "Automations" },
   { id: "energy", label: "Energy", icon: "Energy" },
-  { id: "cameras", label: "Cameras", icon: "Cameras", badge: "4" },
-  { id: "ai", label: "AI Assistant", icon: "AI", badge: "BETA" },
+  { id: "cameras", label: "Cameras", icon: "Cameras" },
   { id: "analytics", label: "Analytics", icon: "Analytics" },
   { id: "settings", label: "Settings", icon: "Settings" },
 ];
@@ -93,13 +92,14 @@ export function Sidebar({
 }
 
 export function Topbar({
-  active, onAlerts, alertsCount, onCommand, deviceCount,
+  active, onAlerts, alertsCount, onCommand, deviceCount, onAddDevice,
 }: {
   active: Route;
   onAlerts: () => void;
   alertsCount: number;
   onCommand: () => void;
   deviceCount: number;
+  onAddDevice?: () => void;
 }) {
   const now = new Date();
   const date = now.toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short" });
@@ -138,7 +138,7 @@ export function Topbar({
           <Icons.Bell />
           {alertsCount > 0 && <span className="bdg">{alertsCount}</span>}
         </div>
-        <button className="btn primary">
+        <button className="btn primary" onClick={onAddDevice}>
           <Icons.Plus /> Add Device
         </button>
       </div>

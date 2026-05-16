@@ -1,15 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import "./design/styles.css";
 import { Sidebar, Topbar, Route } from "./design/shell";
-import {
-  WeatherHero, QuickStats, RoomsGrid, DeviceTilesV2, DeviceTile,
-  CameraGrid, EnergyChart, ClimateCard, PresenceCard, ScenesCard,
-  AIPanel, ServerCard, ActivityFeed, SecurityCard, LightingCard,
-} from "./design/widgets";
+import { WeatherHero, RoomsGrid, DeviceTilesV2, DeviceTile, LightingCard } from "./design/widgets";
 import { DeviceModal, NotificationCenter, CommandPalette } from "./design/overlays";
 import { IntegrationsScreen } from "./design/integrations";
 import { RoomsScreen } from "./design/rooms";
-import { backendToUI, SCENES_MOCK, UIDevice } from "./design/mock";
+import { backendToUI, UIDevice } from "./design/mock";
 import { useStore } from "./store";
 import { api, Device } from "./api";
 
@@ -18,7 +14,6 @@ export function App() {
   const [openDevice, setOpenDevice] = useState<UIDevice | null>(null);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [scenes, setScenes] = useState(SCENES_MOCK);
 
   const { devices: backendDevices, status, integrations, rooms, refresh, connectWs } = useStore();
 
@@ -62,13 +57,9 @@ export function App() {
     catch (e) { console.error(e); }
   };
 
-  const activateScene = (id: string) => {
-    setScenes(ss => ss.map(s => ({ ...s, active: s.id === id ? !s.active : false })));
-  };
-
   const integrationsActive = status?.integrations_active ?? 0;
   const integrationsOnline = status?.integrations_online ?? 0;
-  const alertsCount = 3;
+  const alertsCount = 0;
 
   return (
     <>
@@ -90,15 +81,15 @@ export function App() {
             alertsCount={alertsCount}
             onCommand={() => setCmdOpen(true)}
             deviceCount={uiDevices.length}
+            onAddDevice={() => setRoute("integrations")}
           />
           <div className="content">
             {route === "dashboard" && (
               <Dashboard
                 devices={uiDevices}
-                scenes={scenes}
                 onOpen={setOpenDevice}
                 onToggle={toggleDevice}
-                activateScene={activateScene}
+                onOpenRooms={() => setRoute("rooms")}
               />
             )}
             {route === "devices" && (
@@ -126,38 +117,23 @@ export function App() {
 }
 
 function Dashboard({
-  devices, scenes, onOpen, onToggle, activateScene,
+  devices, onOpen, onToggle, onOpenRooms,
 }: {
   devices: UIDevice[];
-  scenes: { id: string; name: string; meta: string; bg: string; active: boolean; icon: string }[];
   onOpen: (d: UIDevice) => void;
   onToggle: (d: UIDevice) => void;
-  activateScene: (id: string) => void;
+  onOpenRooms: () => void;
 }) {
   return (
     <>
-      <div className="col-8"><WeatherHero /></div>
-      <div className="col-4"><QuickStats /></div>
+      <div className="col-12"><WeatherHero /></div>
 
-      <div className="col-8"><ScenesCard scenes={scenes} onActivate={activateScene} /></div>
-      <div className="col-4"><SecurityCard /></div>
-
-      <div className="col-7"><RoomsGrid /></div>
+      <div className="col-7"><RoomsGrid onOpenRooms={onOpenRooms} /></div>
       <div className="col-5"><LightingCard /></div>
 
       <div className="col-12">
         <DeviceTilesV2 devices={devices} onOpen={onOpen} onToggle={onToggle} />
       </div>
-
-      <div className="col-5"><CameraGrid /></div>
-      <div className="col-4"><ClimateCard /></div>
-      <div className="col-3"><PresenceCard /></div>
-
-      <div className="col-7"><EnergyChart /></div>
-      <div className="col-5"><ServerCard /></div>
-
-      <div className="col-7"><AIPanel compact /></div>
-      <div className="col-5"><ActivityFeed /></div>
     </>
   );
 }

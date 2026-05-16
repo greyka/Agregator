@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Icons } from "./icons";
-import { useTicker, smoothLine, genSeries } from "./utils";
-import { ROOMS, FEED, ALERTS, CAMERAS as CAMS_MOCK, UIDevice } from "./mock";
+import { UIDevice } from "./mock";
 import { useWeather, conditionToInfo } from "./useWeather";
 import { useLocation } from "./useLocation";
 import { LocationPicker } from "./LocationPicker";
 import { WeatherIcon } from "./WeatherIcon";
 import { flag } from "./countries";
+import { useStore } from "../store";
+import { RoomIcon } from "./RoomIcon";
+import { api } from "../api";
 
 function isNightAt(sunrise: string, sunset: string): boolean {
   if (!sunrise || !sunset || sunrise === "—" || sunset === "—") return false;
@@ -101,92 +103,69 @@ export function WeatherHero() {
   );
 }
 
-export function QuickStats() {
-  return (
-    <div style={{display:"flex", flexDirection:"column", gap:14}}>
-      <StatCard title="Energy Use" value="3.42" unit="kWh" delta="-12% vs avg" icon="Bolt" tone="cyan" series={genSeries(20, 3.4, 1.2, 7)} />
-      <StatCard title="Solar Export" value="4.81" unit="kW" delta="+2.1 last hr" icon="Sun" tone="violet" series={genSeries(20, 4.0, 1.0, 13)} />
-      <StatCard title="Air Quality" value="18" unit="AQI" delta="Excellent" icon="Wind" tone="ok" series={genSeries(20, 22, 6, 21)} />
-    </div>
-  );
-}
+export function RoomsGrid({ onOpenRooms }: { onOpenRooms?: () => void }) {
+  const { rooms, devices } = useStore();
+  const deviceCountsByRoom = useMemo(() => {
+    const m: Record<number, number> = {};
+    for (const d of devices) if (d.room_id != null) m[d.room_id] = (m[d.room_id] || 0) + 1;
+    return m;
+  }, [devices]);
+  const onCountsByRoom = useMemo(() => {
+    const m: Record<number, number> = {};
+    for (const d of devices) {
+      if (d.room_id != null && d.state?.state === "ON") m[d.room_id] = (m[d.room_id] || 0) + 1;
+    }
+    return m;
+  }, [devices]);
 
-function StatCard({ title, value, unit, delta, icon, tone, series }: {
-  title: string; value: string; unit?: string; delta: string;
-  icon: keyof typeof Icons; tone: "cyan"|"violet"|"ok"; series: number[];
-}) {
-  const Ic = Icons[icon];
-  const tones = {
-    cyan: { c: "#22E5FF", grad: "url(#sparkCyan)" },
-    violet: { c: "#9D7BFF", grad: "url(#sparkViolet)" },
-    ok: { c: "#56F1A6", grad: "url(#sparkOk)" },
-  };
-  const t = tones[tone];
-  const path = smoothLine(series, 180, 50, 2, 4);
-  return (
-    <div className="card hoverable" style={{padding: 16, paddingBottom: 6}}>
-      <div style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
-        <div style={{display:"flex", alignItems:"center", gap:10}}>
-          <div className="device-ico" style={{width:30, height:30, background: `${t.c}22`, borderColor: `${t.c}55`, color: t.c}}><Ic /></div>
-          <div>
-            <div style={{fontSize:12, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.08em"}}>{title}</div>
-            <div style={{fontSize:22, fontWeight:600, letterSpacing:"-0.02em", lineHeight:1.1}}>{value}<span style={{fontSize:12, color:"var(--text-3)", marginLeft:4}}>{unit}</span></div>
+  if (rooms.length === 0) {
+    return (
+      <div className="card">
+        <div className="card-h">
+          <div className="card-title">Комнаты</div>
+          <div className="card-tools">
+            <span className="pill" onClick={onOpenRooms} style={{cursor: "pointer"}}>
+              <Icons.Plus /> Добавить
+            </span>
           </div>
         </div>
-        <div className="tag" style={{color: t.c, borderColor: `${t.c}40`, background: `${t.c}14`}}>{delta}</div>
+        <div className="placeholder">
+          Комнаты не созданы. Открой вкладку «Rooms» и добавь первую — устройства можно будет привязать к ней через карточку устройства.
+        </div>
       </div>
-      <svg width="100%" height="50" style={{marginTop: 6, display:"block"}} viewBox="0 0 180 50" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="sparkCyan" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(34,229,255,0.4)"/><stop offset="100%" stopColor="rgba(34,229,255,0)"/></linearGradient>
-          <linearGradient id="sparkViolet" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(157,123,255,0.4)"/><stop offset="100%" stopColor="rgba(157,123,255,0)"/></linearGradient>
-          <linearGradient id="sparkOk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="rgba(86,241,166,0.4)"/><stop offset="100%" stopColor="rgba(86,241,166,0)"/></linearGradient>
-        </defs>
-        <path d={`${path} L 180 50 L 0 50 Z`} fill={t.grad} />
-        <path d={path} stroke={t.c} strokeWidth="1.6" fill="none" style={{filter:`drop-shadow(0 0 4px ${t.c})`}} />
-      </svg>
-    </div>
-  );
-}
+    );
+  }
 
-export function RoomsGrid() {
   return (
     <div className="card">
       <div className="card-h">
-        <div className="card-title">Rooms</div>
-        <div className="card-tools"><span className="chip">{ROOMS.length} ZONES</span></div>
+        <div className="card-title">Комнаты</div>
+        <div className="card-tools"><span className="chip">{rooms.length} ZONES</span></div>
       </div>
-      <div style={{display:"grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12}}>
-        {ROOMS.map((r) => (
-          <div key={r.id} className="card hoverable room" style={{padding: 12, borderRadius: 16}}>
-            <div className="room-thumb">
-              <svg viewBox="0 0 100 60" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id={`g${r.id}`} x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor={r.color} stopOpacity="0.55"/>
-                    <stop offset="100%" stopColor={r.color} stopOpacity="0"/>
-                  </linearGradient>
-                </defs>
-                <rect width="100" height="60" fill={`url(#g${r.id})`} />
-                <g stroke={r.color} strokeOpacity="0.5" fill="none" strokeWidth="0.5">
-                  <path d="M0 50 L20 35 L40 42 L60 25 L80 30 L100 18" />
-                </g>
-                <g stroke={r.color} strokeOpacity="0.7" fill="none" strokeWidth="0.8">
-                  <rect x="10" y="10" width="80" height="40" rx="3" />
-                  <line x1="10" y1="30" x2="35" y2="30"/>
-                  <line x1="55" y1="30" x2="90" y2="30"/>
-                </g>
-              </svg>
+      <div style={{display:"grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12}}>
+        {rooms.map((r) => {
+          const count = deviceCountsByRoom[r.id] || 0;
+          const on = onCountsByRoom[r.id] || 0;
+          return (
+            <div key={r.id} className="card hoverable" style={{padding: 14, cursor: onOpenRooms ? "pointer" : "default"}} onClick={onOpenRooms}>
+              <div style={{display:"flex", alignItems:"center", gap: 10}}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10,
+                  display:"grid", placeItems:"center",
+                  background: `${r.color}22`, border: `1px solid ${r.color}55`, color: r.color,
+                }}>
+                  <RoomIcon name={r.icon} size={20} />
+                </div>
+                <div style={{flex: 1, minWidth: 0}}>
+                  <div style={{fontSize: 13.5, fontWeight: 600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>{r.name}</div>
+                  <div style={{fontSize: 10.5, color: "var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.06em", marginTop: 2}}>
+                    {count} УСТР-В {on > 0 ? `· ${on} ВКЛ` : ""}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline", marginTop: 4}}>
-              <div className="room-name">{r.name}</div>
-              <div className="room-meta">{r.devices}D</div>
-            </div>
-            <div className="room-stats">
-              <div className="room-stat"><Icons.Thermometer /> {r.temp}°</div>
-              <div className="room-stat"><Icons.Droplet /> {r.humid}%</div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -253,350 +232,60 @@ export function DeviceTilesV2({ devices, onOpen, onToggle }: {
   );
 }
 
-export function CameraGrid() {
-  const tick = useTicker(1000);
-  const time = useMemo(() => new Date().toLocaleTimeString("en-GB", { hour12: false }), [tick]);
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Cameras · Live</div>
-        <div className="card-tools"><span className="chip live">{CAMS_MOCK.length} STREAMS</span></div>
-      </div>
-      <div style={{display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap: 10}}>
-        {CAMS_MOCK.map((c) => (
-          <div key={c.id} className="cam">
-            <div className="cam-feed" />
-            <svg viewBox="0 0 200 140" style={{position:"absolute", inset:0, width:"100%", height:"100%"}} preserveAspectRatio="none">
-              <g stroke="rgba(34,229,255,0.6)" strokeDasharray="3 3" fill="none">
-                <rect x="60" y="40" width="50" height="60" rx="2">
-                  <animate attributeName="x" values="60;62;60" dur="2.4s" repeatCount="indefinite" />
-                </rect>
-              </g>
-              <text x="62" y="38" fill="#22E5FF" fontSize="6" fontFamily="JetBrains Mono">person · 0.94</text>
-            </svg>
-            <div className="cam-tag">{c.name}</div>
-            <div className="cam-rec"><span className="d" />REC</div>
-            <div className="cam-foot">
-              <span>{time}</span>
-              <span>4K · 30fps</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function EnergyChart() {
-  const tick = useTicker(2200);
-  const series = useMemo(() => genSeries(48, 3.2, 1.6, 100 + tick), [tick]);
-  const exp = useMemo(() => genSeries(48, 2.8, 1.4, 200 + tick), [tick]);
-  const W = 600, H = 200, P = 18;
-  const path1 = smoothLine(series, W, H, P, P);
-  const path2 = smoothLine(exp, W, H, P, P);
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Energy Flow · 24h</div>
-        <div className="card-tools">
-          <span className="pill"><span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:"#22E5FF", marginRight:6, boxShadow:"0 0 6px #22E5FF"}} />Consumption</span>
-          <span className="pill"><span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:"#9D7BFF", marginRight:6, boxShadow:"0 0 6px #9D7BFF"}} />Solar</span>
-        </div>
-      </div>
-      <div style={{position:"relative", marginTop: 4}}>
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="eg1" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(34,229,255,0.35)" />
-              <stop offset="100%" stopColor="rgba(34,229,255,0)" />
-            </linearGradient>
-            <linearGradient id="eg2" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(157,123,255,0.3)" />
-              <stop offset="100%" stopColor="rgba(157,123,255,0)" />
-            </linearGradient>
-          </defs>
-          {Array.from({length:5}).map((_,i)=>(
-            <line key={i} x1={P} x2={W-P} y1={P + i*((H-2*P)/4)} y2={P + i*((H-2*P)/4)} stroke="rgba(255,255,255,0.05)" strokeDasharray="2 4"/>
-          ))}
-          <path d={`${path2} L ${W-P} ${H-P} L ${P} ${H-P} Z`} fill="url(#eg2)" />
-          <path d={`${path1} L ${W-P} ${H-P} L ${P} ${H-P} Z`} fill="url(#eg1)" />
-          <path d={path2} stroke="#9D7BFF" strokeWidth="1.8" fill="none" style={{filter:"drop-shadow(0 0 6px rgba(157,123,255,0.6))"}} />
-          <path d={path1} stroke="#22E5FF" strokeWidth="2" fill="none" style={{filter:"drop-shadow(0 0 6px rgba(34,229,255,0.6))"}} />
-          {["00","06","12","18","24"].map((t,i)=>(
-            <text key={t} x={P + i*((W-2*P)/4)} y={H-3} fontSize="9" fill="#5B6377" fontFamily="JetBrains Mono" textAnchor="middle">{t}h</text>
-          ))}
-        </svg>
-      </div>
-    </div>
-  );
-}
-
-export function ClimateCard() {
-  const tick = useTicker(2500);
-  const tempSeries = useMemo(()=> genSeries(28, 22, 1.6, 300 + tick), [tick]);
-  const humSeries = useMemo(()=> genSeries(28, 47, 6, 400 + tick), [tick]);
-  const W = 280, H = 110, P = 10;
-  const p1 = smoothLine(tempSeries, W, H, P, P);
-  const p2 = smoothLine(humSeries, W, H, P, P);
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Climate · Living Room</div>
-        <div className="card-tools"><span className="chip live">LIVE</span></div>
-      </div>
-      <div style={{display:"flex", gap:18, alignItems:"flex-end"}}>
-        <div className="metric">
-          <div className="num">22.4<span className="unit">°C</span></div>
-          <div className="delta">▲ 0.4°  last hr</div>
-        </div>
-        <div className="metric" style={{marginLeft:"auto"}}>
-          <div className="num" style={{fontSize:28, color:"var(--text-2)"}}>47<span className="unit">%RH</span></div>
-          <div className="delta">comfortable</div>
-        </div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{marginTop: 10}} preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="cl1" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(34,229,255,0.3)"/><stop offset="100%" stopColor="rgba(34,229,255,0)"/>
-          </linearGradient>
-        </defs>
-        <path d={`${p1} L ${W-P} ${H-P} L ${P} ${H-P} Z`} fill="url(#cl1)" />
-        <path d={p1} stroke="#22E5FF" strokeWidth="1.6" fill="none" style={{filter:"drop-shadow(0 0 4px #22E5FF)"}} />
-        <path d={p2} stroke="#9D7BFF" strokeWidth="1.3" strokeDasharray="3 3" fill="none" opacity="0.8"/>
-      </svg>
-    </div>
-  );
-}
-
-export function PresenceCard() {
-  const people = [
-    { name: "Greyka", room: "Studio", away: false, since: "1h 24m" },
-    { name: "Aura", room: "Core", away: false, since: "always" },
-  ];
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Presence</div>
-        <div className="card-tools"><span className="chip">{people.filter(p=>!p.away).length} HOME</span></div>
-      </div>
-      <div style={{display:"flex", flexDirection:"column", gap: 10}}>
-        {people.map((p, i) => (
-          <div key={p.name} style={{display:"flex", alignItems:"center", gap: 10}}>
-            <div className="avatar" style={{background: `linear-gradient(135deg, ${["#22E5FF","#9D7BFF"][i%2]}, #0E1118)`}}>
-              {p.name[0]}
-            </div>
-            <div style={{flex:1}}>
-              <div style={{fontSize: 13, fontWeight:500}}>{p.name}</div>
-              <div style={{fontSize: 10.5, color: "var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.06em"}}>{p.room.toUpperCase()}</div>
-            </div>
-            <div className="status"><span className="d" />{p.since}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export function ScenesCard({ scenes, onActivate }: {
-  scenes: { id: string; name: string; meta: string; bg: string; active: boolean; icon: string }[];
-  onActivate: (id: string) => void;
-}) {
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Scenes</div>
-        <div className="card-tools"><span className="pill"><Icons.Plus /> New</span></div>
-      </div>
-      <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap: 10}}>
-        {scenes.map((s) => {
-          const Ic = Icons[s.icon] || Icons.Sparkles;
-          return (
-            <div key={s.id} className={`scene ${s.bg} ${s.active ? "active" : ""}`} onClick={() => onActivate(s.id)}>
-              <div>
-                <div className="name">{s.name}</div>
-                <div className="meta">{s.meta}</div>
-              </div>
-              <div className="icn"><Ic /></div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function AIPanel({ compact = false }: { compact?: boolean }) {
-  const [msgs, setMsgs] = useState([
-    { who: "ai", text: "Good evening, Greyka. Local LLM connected — agent ready.", ts: "now" },
-  ]);
-  const [text, setText] = useState("");
-  const send = () => {
-    if (!text.trim()) return;
-    setMsgs((m) => [...m, { who: "user", text, ts: "now" }]);
-    setText("");
-    setTimeout(() => {
-      setMsgs((m) => [...m, { who: "ai", text: "AI module is a stub — wire to your model when ready.", ts: "now" }]);
-    }, 600);
-  };
-  return (
-    <div className="card glow-border" style={{display:"flex", flexDirection:"column"}}>
-      <div className="card-h">
-        <div className="card-title">Aura · AI Assistant</div>
-        <div className="card-tools"><span className="chip live">LOCAL LLM</span></div>
-      </div>
-      <div style={{flex:1, maxHeight: compact ? 180 : 240, overflowY:"auto"}}>
-        {msgs.map((m, i) => (
-          <div key={i} className={`ai-msg ${m.who}`}>
-            <div className="av">{m.who === "ai" ? "A" : "G"}</div>
-            <div className="body">{m.text}<span className="ts">{m.ts}</span></div>
-          </div>
-        ))}
-      </div>
-      <div className="suggest">
-        {["Set Cinema Mode", "Dim hallway 20%", "Show energy report", "Lock all doors"].map(s => (
-          <span key={s} className="pill" onClick={() => setText(s)}>{s}</span>
-        ))}
-      </div>
-      <div className="ai-input" style={{marginTop: 10}}>
-        <Icons.Sparkles style={{color:"var(--accent)"} as any} />
-        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} placeholder="Ask Aura to do anything…" />
-        <div className="icon-btn" style={{width:30, height:30}}><Icons.Mic /></div>
-        <div className="icon-btn" style={{width:30, height:30, background:"var(--accent)", color:"#04141a", borderColor:"transparent"}} onClick={send}><Icons.Send /></div>
-      </div>
-    </div>
-  );
-}
-
-export function ServerCard() {
-  const tick = useTicker(1500);
-  const cpu = useMemo(() => 42 + Math.round(Math.sin(tick/3)*8 + (Math.random()-0.5)*6), [tick]);
-  const gpu = useMemo(() => 78 + Math.round(Math.sin(tick/2.4)*6 + (Math.random()-0.5)*5), [tick]);
-  const mem = useMemo(() => 64 + Math.round(Math.sin(tick/3.8)*4 + (Math.random()-0.5)*3), [tick]);
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Compute · umbrelOS</div>
-        <div className="card-tools"><span className="chip live">192.168.1.100</span></div>
-      </div>
-      <div style={{display:"flex", justifyContent:"space-around", gap: 10}}>
-        <Ring v={cpu} c="#22E5FF" label="CPU" sub="x86" />
-        <Ring v={gpu} c="#9D7BFF" label="GPU" sub="N/A" />
-        <Ring v={mem} c="#FF6BD6" label="MEM" sub="DDR4" />
-      </div>
-    </div>
-  );
-}
-
-function Ring({ v, c, label, sub }: { v: number; c: string; label: string; sub: string }) {
-  const r = 26;
-  const C = 2 * Math.PI * r;
-  const off = C - (v/100) * C;
-  return (
-    <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:6}}>
-      <div className="ring" style={{color: c}}>
-        <svg>
-          <circle cx="35" cy="35" r={r} className="track" />
-          <circle cx="35" cy="35" r={r} className="prog" stroke={c} strokeDasharray={C} strokeDashoffset={off}/>
-        </svg>
-        <div className="lbl">{v}%</div>
-      </div>
-      <div style={{fontSize:11, fontFamily:"var(--font-mono)", letterSpacing:"0.1em", color:"var(--text-2)"}}>{label}</div>
-      <div style={{fontSize:9.5, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.06em"}}>{sub}</div>
-    </div>
-  );
-}
-
-export function ActivityFeed() {
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Live Activity</div>
-        <div className="card-tools"><span className="chip live">STREAMING</span></div>
-      </div>
-      <div>
-        {FEED.map((f) => {
-          const Ic = Icons[f.icon] || Icons.Activity;
-          return (
-            <div key={f.id} className="feed-item">
-              <div className="feed-ico"><Ic /></div>
-              <div className="feed-text">
-                <div>{f.text}</div>
-                <div className="src">{f.who.toUpperCase()}</div>
-              </div>
-              <div className="feed-time">{f.time}</div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export function SecurityCard() {
-  return (
-    <div className="card">
-      <div className="card-h">
-        <div className="card-title">Security</div>
-        <div className="card-tools"><span className="chip" style={{color: "var(--ok)"}}>● ARMED · HOME</span></div>
-      </div>
-      <div style={{display:"flex", alignItems:"center", gap: 14, padding:"10px 0 16px"}}>
-        <div style={{width:54, height:54, borderRadius:14, display:"grid", placeItems:"center", background:"rgba(86,241,166,0.12)", border:"1px solid rgba(86,241,166,0.3)", color:"var(--ok)"}}>
-          <Icons.Shield style={{width:22, height:22} as any} />
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:14, fontWeight:600}}>All systems nominal</div>
-          <div style={{fontSize:11.5, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.06em"}}>SENSORS · CAMERAS · LOCKS</div>
-        </div>
-        <button className="btn">Disarm</button>
-      </div>
-      <div>
-        {ALERTS.map(a => (
-          <div key={a.id} className="feed-item">
-            <div className="feed-ico" style={{background: a.level === "warn" ? "rgba(255,181,71,0.12)" : a.level === "danger" ? "rgba(255,92,122,0.12)" : "rgba(86,241,166,0.12)"}}>
-              <span className={`tag ${a.level === "warn" ? "warn" : a.level === "danger" ? "danger" : "ok"}`} style={{padding:0, background:"transparent", border:0}}>●</span>
-            </div>
-            <div className="feed-text">
-              <div>{a.title}</div>
-              <div className="src">{a.body}</div>
-            </div>
-            <div className="feed-time">{a.time}</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function LightingCard() {
-  const [bright, setBright] = useState(64);
-  const [color, setColor] = useState(2);
-  const swatches = ["#FFD27A", "#FFF6E5", "#22E5FF", "#9D7BFF", "#FF6BD6", "#56F1A6"];
-  const groups = [
-    { id: "g1", name: "Living Room", count: 4, on: true },
-    { id: "g2", name: "Kitchen", count: 6, on: true },
-    { id: "g3", name: "Bedroom", count: 3, on: false },
-    { id: "g4", name: "Studio", count: 8, on: true },
-  ];
+  const { devices, refresh } = useStore();
+  const lights = useMemo(() => devices.filter((d) => d.type === "light"), [devices]);
+  const onCount = lights.filter((l) => l.state?.state === "ON").length;
+
+  if (lights.length === 0) {
+    return (
+      <div className="card">
+        <div className="card-h">
+          <div className="card-title">Освещение</div>
+        </div>
+        <div className="placeholder">Лампы не подключены. Добавь интеграцию (Zigbee, Yeelight, Tasmota, Home Assistant) на странице «Integrations».</div>
+      </div>
+    );
+  }
+
+  const toggle = async (id: number, on: boolean) => {
+    try {
+      await api.command(id, { state: on ? "OFF" : "ON" });
+      refresh();
+    } catch (e) { console.error(e); }
+  };
+
   return (
     <div className="card">
       <div className="card-h">
-        <div className="card-title">Smart Lighting</div>
-        <div className="card-tools"><span className="chip">{groups.reduce((s,g)=>s+(g.on?g.count:0),0)} ON</span></div>
+        <div className="card-title">Освещение</div>
+        <div className="card-tools"><span className="chip">{onCount} / {lights.length} ON</span></div>
       </div>
-      <div style={{display:"flex", alignItems:"center", gap: 18, padding: "8px 0 14px"}}>
-        <div style={{width: 90, height: 90, borderRadius:"50%", background: `radial-gradient(circle, ${swatches[color]}, ${swatches[color]}33 60%, transparent 75%)`, boxShadow:`0 0 36px ${swatches[color]}80`, position:"relative"}}>
-          <div style={{position:"absolute", inset: 14, borderRadius:"50%", background: swatches[color], opacity: bright/100, transition:"all 0.25s"}} />
-        </div>
-        <div style={{flex:1}}>
-          <div style={{fontSize:11, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.1em", marginBottom:6}}>BRIGHTNESS</div>
-          <input type="range" min={0} max={100} value={bright} onChange={e => setBright(+e.target.value)} className="range"/>
-          <div style={{fontSize:11, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.1em", margin:"12px 0 6px"}}>COLOR</div>
-          <div style={{display:"flex", gap: 6}}>
-            {swatches.map((s, i) => (
-              <div key={i} className={`swatch ${color===i ? "sel" : ""}`} style={{background: s}} onClick={() => setColor(i)} />
-            ))}
-          </div>
-        </div>
+      <div style={{display: "flex", flexDirection: "column", gap: 8}}>
+        {lights.map((d) => {
+          const on = d.state?.state === "ON";
+          const value = typeof d.state?.brightness === "number"
+            ? Math.round((d.state.brightness / 254) * 100) : null;
+          return (
+            <div key={d.id} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 6px", borderBottom: "1px dashed var(--hairline)",
+            }}>
+              <div className="device-ico" style={{width:30, height:30, color: on ? "var(--accent)" : "var(--text-3)"}}>
+                <Icons.Lightbulb />
+              </div>
+              <div style={{flex:1, minWidth: 0}}>
+                <div style={{fontSize:12.5, fontWeight:500, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap"}}>
+                  {d.friendly_name}
+                </div>
+                <div style={{fontSize:10, color:"var(--text-3)", fontFamily:"var(--font-mono)"}}>
+                  {d.vendor || d.integration?.toUpperCase()}{value !== null ? ` · ${value}%` : ""}
+                </div>
+              </div>
+              <div className={`toggle ${on ? "on" : ""}`} onClick={() => toggle(d.id, on)} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Icons } from "./icons";
 import { smoothLine, genSeries, useTicker } from "./utils";
 import { UIDevice } from "./mock";
-import { ALERTS } from "./mock";
 import type { Route } from "./shell";
 import { api } from "../api";
 import { useStore } from "../store";
@@ -160,22 +159,12 @@ export function NotificationCenter({ open, onClose }: { open: boolean; onClose: 
       <div className="notif-panel">
         <div style={{padding: "14px 16px", borderBottom: "1px solid var(--hairline)", display:"flex", alignItems:"center", justifyContent:"space-between"}}>
           <div>
-            <div style={{fontSize: 14, fontWeight: 600}}>Notifications</div>
-            <div style={{fontSize: 11, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.08em"}}>3 NEW · TODAY</div>
+            <div style={{fontSize: 14, fontWeight: 600}}>Уведомления</div>
+            <div style={{fontSize: 11, color:"var(--text-3)", fontFamily:"var(--font-mono)", letterSpacing:"0.08em"}}>0 NEW</div>
           </div>
-          <span className="pill">Mark all read</span>
         </div>
-        <div style={{maxHeight: "60vh", overflowY:"auto", padding: "4px 16px"}}>
-          {ALERTS.map(a => (
-            <div key={a.id} style={{display:"grid", gridTemplateColumns:"28px 1fr auto", gap: 10, padding:"12px 0", borderBottom:"1px dashed var(--hairline)"}}>
-              <div className="feed-ico"><Icons.Bell /></div>
-              <div>
-                <div style={{fontSize:13, fontWeight:500}}>{a.title}</div>
-                <div style={{fontSize:11.5, color:"var(--text-3)", marginTop: 2}}>{a.body}</div>
-              </div>
-              <div style={{fontFamily:"var(--font-mono)", fontSize:10, color:"var(--text-3)", whiteSpace:"nowrap"}}>{a.time}</div>
-            </div>
-          ))}
+        <div style={{padding: "32px 16px", textAlign: "center", color: "var(--text-3)", fontSize: 12}}>
+          Пока нет уведомлений.
         </div>
       </div>
     </>
