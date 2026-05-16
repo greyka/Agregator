@@ -171,12 +171,15 @@ export function RoomsGrid({ onOpenRooms }: { onOpenRooms?: () => void }) {
   );
 }
 
+const CONTROLLABLE = new Set(["light", "switch", "fan", "cover", "lock", "media_player"]);
+
 export function DeviceTile({ d, onOpen, onToggle }: {
   d: UIDevice;
   onOpen: (d: UIDevice) => void;
   onToggle: (d: UIDevice) => void;
 }) {
   const Ic = Icons[d.icon] || Icons.Power;
+  const controllable = CONTROLLABLE.has(d.type);
   return (
     <div
       className={`card hoverable device ${d.on ? "on" : ""}`}
@@ -185,10 +188,19 @@ export function DeviceTile({ d, onOpen, onToggle }: {
     >
       <div className="device-head">
         <div className="device-ico"><Ic /></div>
-        <div
-          className={`toggle ${d.on ? "on" : ""}`}
-          onClick={(e) => { e.stopPropagation(); onToggle(d); }}
-        />
+        {controllable ? (
+          <div
+            className={`toggle ${d.on ? "on" : ""}`}
+            onClick={(e) => { e.stopPropagation(); onToggle(d); }}
+          />
+        ) : (
+          <span style={{
+            fontSize: 10, fontFamily: "var(--font-mono)", letterSpacing: "0.08em",
+            color: "var(--text-3)", textTransform: "uppercase",
+          }}>
+            {d.type === "sensor" ? "Сенсор" : d.type}
+          </span>
+        )}
       </div>
       <div>
         <div className="device-name">{d.name}</div>

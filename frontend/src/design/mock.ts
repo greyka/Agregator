@@ -75,26 +75,63 @@ const TYPE_ICON: Record<string, string> = {
   unknown: "Power",
 };
 
+function inferType(d: any): string {
+  if (d.type && d.type !== "unknown") return d.type;
+  // Infer from state fields when backend didn't classify it
+  const s = d.state || {};
+  if ("temperature" in s || "humidity" in s) return "sensor";
+  if ("occupancy" in s || "motion" in s) return "sensor";
+  if (typeof s.brightness === "number") return "light";
+  if ("state" in s && (s.state === "ON" || s.state === "OFF")) return "switch";
+  if ("battery" in s) return "sensor";
+  return "unknown";
+}
+
+function inferIcon(type: string, state: any): string {
+  if (type === "light") return "Lightbulb";
+  if (type === "switch") return "Outlet";
+  if (type === "sensor") {
+    if ("temperature" in state) return "Thermometer";
+    if ("occupancy" in state || "motion" in state) return "Eye";
+    if ("humidity" in state) return "Droplet";
+    return "Activity";
+  }
+  return TYPE_ICON[type] || "Power";
+}
+
+function summarizeState(type: string, state: any, value: number | undefined): string {
+  if (type === "sensor") {
+    const parts: string[] = [];
+    if (typeof state.temperature === "number") parts.push(`${state.temperature}°C`);
+    if (typeof state.humidity === "number") parts.push(`${state.humidity}%`);
+    if (typeof state.occupancy === "boolean") parts.push(state.occupancy ? "движение" : "тихо");
+    if (typeof state.illuminance === "number") parts.push(`${state.illuminance}lx`);
+    if (parts.length) {
+      if (typeof state.battery === "number") parts.push(`🔋${state.battery}%`);
+      return parts.join(" · ");
+    }
+    if (typeof state.battery === "number") return `🔋 ${state.battery}%`;
+    return state.state || "—";
+  }
+  if (value !== undefined) return `${value}%`;
+  const on = (state?.state || "").toString().toUpperCase() === "ON";
+  return on ? "Включено" : "Выключено";
+}
+
 export function backendToUI(d: any, rooms: { id: number; name: string }[] = []): UIDevice {
   const on = (d.state?.state || "").toString().toUpperCase() === "ON";
   const value = typeof d.state?.brightness === "number"
     ? Math.round((d.state.brightness / 254) * 100)
     : undefined;
-  let stateLabel = on ? "On" : "Off";
-  if (d.type === "sensor") {
-    if (typeof d.state?.temperature === "number") stateLabel = `${d.state.temperature}°C`;
-    else if (typeof d.state?.occupancy === "boolean") stateLabel = d.state.occupancy ? "Detected" : "Idle";
-    else if (typeof d.state?.battery === "number") stateLabel = `Batt ${d.state.battery}%`;
-  } else if (value !== undefined) {
-    stateLabel = `${value}%`;
-  }
+  const type = inferType(d);
+  const stateLabel = summarizeState(type, d.state || {}, value);
   const roomById = d.room_id != null ? rooms.find((r) => r.id === d.room_id)?.name : null;
   return {
     id: String(d.id),
     name: d.friendly_name,
     room: roomById || d.room || (d.vendor || "Unassigned"),
-    type: d.type,
-    icon: TYPE_ICON[d.type] || "Power",
+    type,
+    icon: inferIcon(type, d.state || {}),
     on,
     value,
     state: stateLabel,
