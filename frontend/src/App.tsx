@@ -5,6 +5,7 @@ import { WeatherHero, RoomsGrid, DeviceTilesV2, DeviceTile, LightingCard } from 
 import { DeviceModal, NotificationCenter, CommandPalette } from "./design/overlays";
 import { IntegrationsScreen } from "./design/integrations";
 import { RoomsScreen } from "./design/rooms";
+import { CatalogScreen } from "./design/catalog";
 import { backendToUI, UIDevice } from "./design/mock";
 import { useStore } from "./store";
 import { api, Device } from "./api";
@@ -32,7 +33,12 @@ export function App() {
       }
     };
     document.addEventListener("keydown", fn);
-    return () => document.removeEventListener("keydown", fn);
+    const goto = (e: Event) => setRoute((e as CustomEvent).detail as Route);
+    window.addEventListener("agregator:goto", goto);
+    return () => {
+      document.removeEventListener("keydown", fn);
+      window.removeEventListener("agregator:goto", goto);
+    };
   }, []);
 
   const uiDevices: UIDevice[] = useMemo(
@@ -97,7 +103,8 @@ export function App() {
             )}
             {route === "integrations" && <IntegrationsScreen />}
             {route === "rooms" && <RoomsScreen />}
-            {route !== "dashboard" && route !== "devices" && route !== "integrations" && route !== "rooms" && (
+            {route === "catalog" && <CatalogScreen />}
+            {route !== "dashboard" && route !== "devices" && route !== "integrations" && route !== "rooms" && route !== "catalog" && (
               <Placeholder route={route} />
             )}
           </div>

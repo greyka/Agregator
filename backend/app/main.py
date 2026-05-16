@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
 from .db import init_db
 from .integration_manager import manager
-from .routers import devices, discovery, integrations, rooms, scenes, weather, ws
+from .routers import catalog, devices, discovery, integrations, rooms, scenes, weather, ws
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 
@@ -57,6 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(catalog.router)
 app.include_router(devices.router)
 app.include_router(discovery.router)
 app.include_router(integrations.router)

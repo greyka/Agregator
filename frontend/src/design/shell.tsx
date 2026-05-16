@@ -1,7 +1,7 @@
 import { Icons } from "./icons";
 
 export type Route =
-  | "dashboard" | "rooms" | "devices" | "integrations"
+  | "dashboard" | "rooms" | "devices" | "catalog" | "integrations"
   | "automations" | "scenes" | "energy" | "cameras"
   | "ai" | "analytics" | "settings";
 
@@ -9,6 +9,7 @@ const NAV_ITEMS: { id: Route; label: string; icon: keyof typeof Icons; badge?: s
   { id: "dashboard", label: "Dashboard", icon: "Dashboard" },
   { id: "rooms", label: "Rooms", icon: "Rooms" },
   { id: "devices", label: "Devices", icon: "Devices" },
+  { id: "catalog", label: "Catalog", icon: "Sparkles" },
   { id: "integrations", label: "Integrations", icon: "Integrations" },
   { id: "scenes", label: "Scenes", icon: "Scenes" },
   { id: "automations", label: "Automations", icon: "Automations" },
@@ -108,6 +109,7 @@ export function Topbar({
     dashboard: ["Overview", `Today · ${date} · ${time}`],
     rooms: ["Rooms", "Zones overview"],
     devices: ["Devices", `${deviceCount} connected`],
+    catalog: ["Каталог устройств", "Browse supported devices"],
     integrations: ["Integrations", "Connected systems"],
     automations: ["Automations", "Routines & flows"],
     scenes: ["Scenes", "Presets"],

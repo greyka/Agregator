@@ -102,6 +102,22 @@ export const api = {
     req<Floor>(`/api/floors/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteFloor: (id: number) => req<void>(`/api/floors/${id}`, { method: "DELETE" }),
 
+  catalogStats: () => req<{ total: number; by_kind: Record<string, number> }>("/api/catalog/stats"),
+  catalogSearch: (params: { q?: string; kind?: string; limit?: number; offset?: number }) => {
+    const sp = new URLSearchParams();
+    if (params.q) sp.set("q", params.q);
+    if (params.kind) sp.set("kind", params.kind);
+    if (params.limit != null) sp.set("limit", String(params.limit));
+    if (params.offset != null) sp.set("offset", String(params.offset));
+    return req<{
+      total: number; offset: number; limit: number;
+      results: Array<{
+        vendor: string; model: string; description: string;
+        integration_kind: string; image_url?: string | null;
+      }>;
+    }>(`/api/catalog/search?${sp}`);
+  },
+
   discover: () => req<{
     subnet: string;
     count: number;
