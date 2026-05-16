@@ -143,9 +143,16 @@ def main() -> int:
         print("\n[5/5] Building & starting docker compose (this may take a few minutes)...")
         run(client, f"cd {args.path} && {sudo_prefix}docker compose up -d --build",
             sudo_password=password if needs_sudo else None)
+        # Wipe removes src files inotify-watched by uvicorn --reload; if the
+        # image itself didn't change, `up --build` won't recreate the container
+        # and the (now broken) reloader process may stay dead. Force a restart
+        # so uvicorn picks up the restored source tree cleanly.
+        print("  forcing backend restart for clean reload...")
+        run(client, f"cd {args.path} && {sudo_prefix}docker compose restart backend",
+            check=False, sudo_password=password if needs_sudo else None)
 
         print("\n[verify] Checking backend...")
-        time.sleep(4)
+        time.sleep(5)
         rc, _, _ = run(client, "curl -fsS http://localhost:8000/ && echo", check=False)
         if rc != 0:
             print("\n!! Backend not responding yet, dumping logs:")
