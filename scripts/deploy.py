@@ -143,12 +143,12 @@ def main() -> int:
         print("\n[5/5] Building & starting docker compose (this may take a few minutes)...")
         run(client, f"cd {args.path} && {sudo_prefix}docker compose up -d --build",
             sudo_password=password if needs_sudo else None)
-        # Wipe removes src files inotify-watched by uvicorn --reload; if the
-        # image itself didn't change, `up --build` won't recreate the container
-        # and the (now broken) reloader process may stay dead. Force a restart
-        # so uvicorn picks up the restored source tree cleanly.
-        print("  forcing backend restart for clean reload...")
-        run(client, f"cd {args.path} && {sudo_prefix}docker compose restart backend",
+        # Wipe deletes src files that both backend (uvicorn --reload) and
+        # frontend (Vite HMR) watch via inotify. If the image didn't change,
+        # `up --build` won't recreate the container, so both reloaders stay
+        # stuck on a missing file tree. Restart both for a clean state.
+        print("  forcing backend + frontend restart for clean reload...")
+        run(client, f"cd {args.path} && {sudo_prefix}docker compose restart backend frontend",
             check=False, sudo_password=password if needs_sudo else None)
 
         print("\n[verify] Checking backend...")
