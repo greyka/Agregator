@@ -13,6 +13,7 @@ import struct
 from typing import Any
 
 from ..models import Device
+from ..discovery.matchers import ZeroconfMatcher, DhcpMatcher
 from .base import BaseIntegration, ConfigField, register
 
 log = logging.getLogger("integration.yeelight")
@@ -33,6 +34,12 @@ class YeelightIntegration(BaseIntegration):
     label = "Yeelight (LAN)"
     description = "Yeelight Wi-Fi лампы по локальному JSON-RPC (LAN Control must be enabled)"
     icon = "💡"
+    zeroconf_matchers = [
+        ZeroconfMatcher(type="_miio._udp.local.", name="yeelink"),
+    ]
+    dhcp_matchers = [
+        DhcpMatcher(hostname="yeelink-*"),
+    ]
     config_schema = [
         ConfigField("scan_interval", "Сканировать каждые N сек", "int", default=60),
         ConfigField("static_hosts", "Список IP через запятую (опц.)", "string", default=""),

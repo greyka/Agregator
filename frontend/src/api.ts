@@ -102,6 +102,18 @@ export const api = {
     req<Floor>(`/api/floors/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteFloor: (id: number) => req<void>(`/api/floors/${id}`, { method: "DELETE" }),
 
+  discoveries: () => req<{
+    stats: { total: number; by_source: Record<string, number> };
+    devices: Array<{
+      unique_id: string; source: string; ip: string; mac: string | null;
+      hostname: string | null; name: string | null; vendor: string | null;
+      model: string | null; matched_kinds: string[]; hint: string | null;
+      first_seen: number; last_seen: number; extra: any;
+    }>;
+  }>("/api/discoveries"),
+  forgetDiscovery: (uniqueId: string) =>
+    req<void>(`/api/discoveries/${encodeURIComponent(uniqueId)}`, { method: "DELETE" }),
+
   catalogStats: () => req<{ total: number; by_kind: Record<string, number> }>("/api/catalog/stats"),
   catalogSearch: (params: { q?: string; kind?: string; limit?: number; offset?: number }) => {
     const sp = new URLSearchParams();

@@ -15,6 +15,7 @@ from typing import Any
 import aiomqtt
 
 from ..models import Device
+from ..discovery.matchers import ZeroconfMatcher, DhcpMatcher
 from .base import BaseIntegration, ConfigField, register
 
 log = logging.getLogger("integration.shelly")
@@ -26,6 +27,14 @@ class ShellyIntegration(BaseIntegration):
     label = "Shelly (Wi-Fi)"
     description = "Shelly Plug/Plus/Pro и другие Wi-Fi устройства Allterco через MQTT"
     icon = "💡"
+    zeroconf_matchers = [
+        ZeroconfMatcher(type="_shelly._tcp.local."),
+        ZeroconfMatcher(type="_http._tcp.local.", name="shelly"),
+    ]
+    dhcp_matchers = [
+        DhcpMatcher(hostname="shelly*"),
+        DhcpMatcher(mac_oui="98F4AB"),  # Allterco / Shelly OUI prefix
+    ]
     config_schema = [
         ConfigField("host", "MQTT-хост", "host", required=True, default="mosquitto"),
         ConfigField("port", "Порт", "int", default=1883),

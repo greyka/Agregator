@@ -16,6 +16,7 @@ from typing import Any
 import aiohttp
 
 from ..models import Device
+from ..discovery.matchers import ZeroconfMatcher
 from .base import BaseIntegration, ConfigField, register
 
 log = logging.getLogger("integration.home_assistant")
@@ -56,6 +57,9 @@ class HomeAssistantIntegration(BaseIntegration):
     label = "Home Assistant"
     description = "Импорт устройств и сущностей из работающего Home Assistant через REST + WebSocket"
     icon = "🏠"
+    zeroconf_matchers = [
+        ZeroconfMatcher(type="_home-assistant._tcp.local."),
+    ]
     config_schema = [
         ConfigField("host", "Хост (IP или DNS)", "host", required=True, default="192.168.1.100",
                     help="Адрес HA, например 192.168.1.100 (без http://)"),

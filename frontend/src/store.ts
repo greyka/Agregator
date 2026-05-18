@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { api, Device, Floor, Integration, Room, Status } from "./api";
 
+export type DiscoveredDevice = {
+  unique_id: string; source: string; ip: string; mac: string | null;
+  hostname: string | null; name: string | null; vendor: string | null;
+  model: string | null; matched_kinds: string[]; hint: string | null;
+  first_seen: number; last_seen: number; extra: any;
+};
+
 type State = {
   devices: Device[];
   integrations: Integration[];
@@ -8,9 +15,12 @@ type State = {
   rooms: Room[];
   status: Status | null;
   wsConnected: boolean;
+  discoveries: DiscoveredDevice[];
   refresh: () => Promise<void>;
   refreshIntegrations: () => Promise<void>;
   refreshRooms: () => Promise<void>;
+  refreshDiscoveries: () => Promise<void>;
+  forgetDiscovery: (uniqueId: string) => Promise<void>;
   connectWs: () => void;
   applyStatePatch: (deviceId: number, friendly: string, state: Record<string, any>) => void;
 };
@@ -22,6 +32,7 @@ export const useStore = create<State>((set, get) => ({
   rooms: [],
   status: null,
   wsConnected: false,
+  discoveries: [],
 
   refresh: async () => {
     const [devices, status, integrations, floors, rooms] = await Promise.all([
@@ -38,6 +49,16 @@ export const useStore = create<State>((set, get) => ({
   refreshRooms: async () => {
     const [floors, rooms] = await Promise.all([api.floors(), api.rooms()]);
     set({ floors, rooms });
+  },
+
+  refreshDiscoveries: async () => {
+    const r = await api.discoveries();
+    set({ discoveries: r.devices });
+  },
+
+  forgetDiscovery: async (uniqueId) => {
+    await api.forgetDiscovery(uniqueId);
+    set((s) => ({ discoveries: s.discoveries.filter((d) => d.unique_id !== uniqueId) }));
   },
 
   applyStatePatch: (deviceId, friendly, state) => {
@@ -69,6 +90,14 @@ export const useStore = create<State>((set, get) => ({
           get().refreshIntegrations();
         } else if (msg.type === "floors.refresh" || msg.type === "rooms.refresh") {
           get().refreshRooms();
+        } else if (msg.type === "discovery.found") {
+          set((s) => {
+            const idx = s.discoveries.findIndex((d) => d.unique_id === msg.device.unique_id);
+            const next = [...s.discoveries];
+            if (idx >= 0) next[idx] = msg.device;
+            else next.unshift(msg.device);
+            return { discoveries: next };
+          });
         }
       } catch {}
     };

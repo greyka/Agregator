@@ -7,8 +7,10 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5173,
     proxy: {
-      "/api": { target: "http://backend:8000", changeOrigin: true },
-      "/ws": { target: "ws://backend:8000", ws: true },
+      // backend now runs in host networking (for LAN multicast discovery),
+      // so the frontend container reaches it via host.docker.internal.
+      "/api": { target: "http://host.docker.internal:8000", changeOrigin: true },
+      "/ws": { target: "ws://host.docker.internal:8000", ws: true },
     },
   },
 });

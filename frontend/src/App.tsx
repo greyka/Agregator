@@ -6,6 +6,7 @@ import { DeviceModal, NotificationCenter, CommandPalette } from "./design/overla
 import { IntegrationsScreen } from "./design/integrations";
 import { RoomsScreen } from "./design/rooms";
 import { CatalogScreen } from "./design/catalog";
+import { DiscoveredScreen } from "./design/discovered";
 import { backendToUI, UIDevice } from "./design/mock";
 import { useStore } from "./store";
 import { api, Device } from "./api";
@@ -104,7 +105,8 @@ export function App() {
             {route === "integrations" && <IntegrationsScreen />}
             {route === "rooms" && <RoomsScreen />}
             {route === "catalog" && <CatalogScreen />}
-            {route !== "dashboard" && route !== "devices" && route !== "integrations" && route !== "rooms" && route !== "catalog" && (
+            {route === "discovered" && <DiscoveredScreen />}
+            {route !== "dashboard" && route !== "devices" && route !== "integrations" && route !== "rooms" && route !== "catalog" && route !== "discovered" && (
               <Placeholder route={route} />
             )}
           </div>

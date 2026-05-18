@@ -42,6 +42,12 @@ class BaseIntegration(ABC):
     description: ClassVar[str] = ""
     icon: ClassVar[str] = "🔌"
     config_schema: ClassVar[list[ConfigField]] = []
+    # Discovery matchers (HA-style manifest): subclasses override these as
+    # class attributes. The discovery manager wires them into the scanners at
+    # startup. Empty lists mean "no auto-discovery for this integration".
+    zeroconf_matchers: ClassVar[list] = []  # list[ZeroconfMatcher]
+    ssdp_matchers: ClassVar[list] = []      # list[SsdpMatcher]
+    dhcp_matchers: ClassVar[list] = []      # list[DhcpMatcher]
 
     def __init__(self, integration_id: int, config: dict[str, Any]):
         self.id = integration_id

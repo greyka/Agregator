@@ -26,12 +26,16 @@ services:
     build:
       context: ./backend
     container_name: agregator-backend
-    ports:
-      - "8000:8000"
+    # Host networking is required for real LAN discovery — mDNS (224.0.0.251),
+    # SSDP (239.255.255.250), miIO broadcast and DHCP packet capture only work
+    # when the process shares the host's network namespace.
+    network_mode: host
+    cap_add:
+      - NET_RAW   # passive DHCP packet sniff via AF_PACKET
     depends_on:
       - mosquitto
     environment:
-      MQTT_HOST: mosquitto
+      MQTT_HOST: 127.0.0.1
       MQTT_PORT: 1883
       MQTT_BASE_TOPIC: zigbee2mqtt
       DATABASE_URL: sqlite+aiosqlite:////data/agregator.db
@@ -51,6 +55,9 @@ services:
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
+    extra_hosts:
+      # backend runs on host network; this lets the Vite proxy reach it
+      - "host.docker.internal:host-gateway"
     depends_on:
       - backend
     restart: unless-stopped

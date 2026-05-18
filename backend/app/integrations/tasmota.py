@@ -17,6 +17,7 @@ from typing import Any
 import aiomqtt
 
 from ..models import Device
+from ..discovery.matchers import ZeroconfMatcher, DhcpMatcher
 from .base import BaseIntegration, ConfigField, register
 
 log = logging.getLogger("integration.tasmota")
@@ -28,6 +29,12 @@ class TasmotaIntegration(BaseIntegration):
     label = "Tasmota (Wi-Fi)"
     description = "Sonoff / ESP-устройства с прошивкой Tasmota через MQTT"
     icon = "📶"
+    zeroconf_matchers = [
+        ZeroconfMatcher(type="_http._tcp.local.", name="tasmota"),
+    ]
+    dhcp_matchers = [
+        DhcpMatcher(hostname="tasmota*"),
+    ]
     config_schema = [
         ConfigField("host", "MQTT-хост", "host", required=True, default="mosquitto"),
         ConfigField("port", "Порт", "int", default=1883),
