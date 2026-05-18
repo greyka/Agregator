@@ -5,4 +5,4 @@ unified Device model used by the rest of the system.
 Each adapter inherits from `BaseIntegration` and is registered via `register()`.
 """
 from .base import BaseIntegration, registry  # noqa: F401
-from . import zigbee2mqtt, tasmota, shelly, yeelight, xiaomi_gateway, home_assistant, lg_webos, keenetic  # noqa: F401
+from . import zigbee2mqtt, tasmota, shelly, yeelight, xiaomi_gateway, xiaomi_cloud, home_assistant, lg_webos, keenetic  # noqa: F401

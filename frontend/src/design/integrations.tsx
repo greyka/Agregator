@@ -9,6 +9,7 @@ const KIND_ICON: Record<string, keyof typeof Icons> = {
   shelly: "Lightbulb",
   yeelight: "Lightbulb",
   xiaomi_gateway: "Shield",
+  xiaomi_cloud: "Globe",
   home_assistant: "Dashboard",
   lg_webos: "Tv",
   keenetic: "Wifi",
