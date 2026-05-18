@@ -15,6 +15,7 @@ import logging
 from typing import Any
 
 from ..models import Device
+from ..discovery.matchers import ZeroconfMatcher, DhcpMatcher
 from .base import BaseIntegration, ConfigField, register
 
 log = logging.getLogger("integration.xiaomi_gateway")
@@ -33,6 +34,16 @@ class XiaomiGatewayIntegration(BaseIntegration):
     label = "Xiaomi / Aqara Gateway"
     description = "Шлюз Xiaomi Mi Home или Aqara Hub по локальному miIO-протоколу"
     icon = "🏯"
+    zeroconf_matchers = [
+        # Xiaomi / Aqara / Yeelink advertise themselves as lumi-gateway-v* / yeelink-* on _miio._udp
+        ZeroconfMatcher(type="_miio._udp.local.", name="lumi"),
+        ZeroconfMatcher(type="_miio._udp.local.", name="yeelink"),
+    ]
+    dhcp_matchers = [
+        DhcpMatcher(hostname="lumi-gateway-*"),
+        DhcpMatcher(mac_oui="04CF8C"),  # Xiaomi OUI
+        DhcpMatcher(mac_oui="78110F"),  # Xiaomi OUI
+    ]
     config_schema = [
         ConfigField("host", "IP-адрес шлюза", "host", required=True,
                     help="Локальный IP, например 192.168.1.50"),
