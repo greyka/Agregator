@@ -45,6 +45,8 @@ class ZeroconfScanner:
         self._azc: AsyncZeroconf | None = None
         self._browser: AsyncServiceBrowser | None = None
         self._matchers_by_type: dict[str, list[tuple[str, ZeroconfMatcher]]] = {}
+        self._requery_task: asyncio.Task | None = None
+        self._stop = asyncio.Event()
 
     def register_integration(self, kind: str, matchers: list[ZeroconfMatcher]) -> None:
         for m in matchers:
@@ -53,15 +55,46 @@ class ZeroconfScanner:
     async def start(self) -> None:
         # Always include common service types for visibility
         catchall = ["_http._tcp.local.", "_services._dns-sd._udp.local."]
-        types = sorted({*self._matchers_by_type.keys(), *catchall})
-        log.info("mDNS subscribing to %d types", len(types))
+        self._types = sorted({*self._matchers_by_type.keys(), *catchall})
+        log.info("mDNS subscribing to %d types", len(self._types))
         self._azc = AsyncZeroconf(ip_version=IPVersion.V4Only)
         self._browser = AsyncServiceBrowser(
-            self._azc.zeroconf, types,
+            self._azc.zeroconf, self._types,
             handlers=[self._on_change],
         )
+        # Periodically re-query: silent mDNS devices don't re-announce often,
+        # but they do reply to queries. Refreshing the browser every 60s keeps
+        # the registry fresh without spamming the LAN.
+        self._requery_task = asyncio.create_task(self._requery_loop())
+
+    async def _requery_loop(self) -> None:
+        while not self._stop.is_set():
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=60)
+            except asyncio.TimeoutError:
+                pass
+            if self._stop.is_set() or not self._azc:
+                return
+            try:
+                # Cancel current browser and start a fresh one — this re-sends
+                # PTR queries for every type and catches devices that didn't
+                # announce on schedule.
+                if self._browser:
+                    await self._browser.async_cancel()
+                self._browser = AsyncServiceBrowser(
+                    self._azc.zeroconf, self._types,
+                    handlers=[self._on_change],
+                )
+                log.debug("mDNS re-queried %d types", len(self._types))
+            except Exception as e:
+                log.warning("mDNS re-query failed: %s", e)
 
     async def stop(self) -> None:
+        self._stop.set()
+        if self._requery_task:
+            self._requery_task.cancel()
+            try: await self._requery_task
+            except (asyncio.CancelledError, Exception): pass
         if self._browser:
             await self._browser.async_cancel()
             self._browser = None

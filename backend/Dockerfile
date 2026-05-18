@@ -17,4 +17,8 @@ RUN pip install -r /app/requirements.txt \
 COPY app /app/app
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Note: no --reload here. uvicorn's --reload re-imports modules on file change,
+# which reincarnates the discovery registry as a fresh singleton — silently
+# losing every device that was already found. Iterate with the deploy script
+# instead; the backend container restarts cleanly in <2s.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
