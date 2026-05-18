@@ -63,8 +63,12 @@ class SsdpScanner:
             for kind, m in self._matchers:
                 if m.st and not (m.st == st or m.st == headers.get("NT", "")):
                     continue
-                if m.server and not fnmatch.fnmatchcase(server.lower(), m.server.lower()):
-                    continue
+                if m.server:
+                    needle = m.server.lower()
+                    haystack = server.lower()
+                    # match as substring OR as fnmatch wildcard pattern
+                    if needle not in haystack and not fnmatch.fnmatchcase(haystack, needle):
+                        continue
                 matched.append(kind)
 
             dev = DiscoveredDevice(

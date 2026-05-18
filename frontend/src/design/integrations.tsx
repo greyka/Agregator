@@ -10,6 +10,8 @@ const KIND_ICON: Record<string, keyof typeof Icons> = {
   yeelight: "Lightbulb",
   xiaomi_gateway: "Shield",
   home_assistant: "Dashboard",
+  lg_webos: "Tv",
+  keenetic: "Wifi",
 };
 
 const STATUS_COLOR: Record<string, string> = {

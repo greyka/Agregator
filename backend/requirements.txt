@@ -11,3 +11,4 @@ aiohttp==3.10.11
 zeroconf==0.136.2
 async-upnp-client==0.44.0
 getmac==0.9.5
+aiowebostv==0.7.5

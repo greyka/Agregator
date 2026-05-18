@@ -70,8 +70,11 @@ const TYPE_ICON: Record<string, string> = {
   lock: "Lock",
   fan: "Fan",
   media_player: "Tv",
+  tv: "Tv",
   vacuum: "Power",
   hub: "Wifi",
+  router: "Wifi",
+  presence: "User",
   unknown: "Power",
 };
 
